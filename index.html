@@ -783,6 +783,10 @@
       mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
       btnLocateUser.addEventListener('click', locateCurrentUser);
 
+      // File Selection Reset on Click so re-uploading same file always fires change event
+      fileInput.addEventListener('click', () => { fileInput.value = ''; });
+      folderInput.addEventListener('click', () => { folderInput.value = ''; });
+
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
       folderInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
@@ -806,8 +810,17 @@
 
       dropzone.addEventListener('drop', (e) => {
         const dt = e.dataTransfer;
-        if (dt.files && dt.files.length > 0) {
+        if (dt && dt.files && dt.files.length > 0) {
           handleFilesSelected(dt.files);
+        }
+      });
+
+      // Window-wide drag and drop
+      window.addEventListener('dragover', (e) => e.preventDefault());
+      window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          handleFilesSelected(e.dataTransfer.files);
         }
       });
 
@@ -847,7 +860,7 @@
 
       optExportHtml.addEventListener('click', () => {
         exportModal.classList.add('hidden');
-        exportHtmlReport();
+        exportInteractiveHtmlReport();
       });
 
       optExportStamped.addEventListener('click', () => {
