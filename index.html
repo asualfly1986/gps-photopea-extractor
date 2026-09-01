@@ -21,9 +21,8 @@
   <!-- HEIC Converter (heic2any) -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-  <!-- Google Identity Services & Google API Client -->
+  <!-- Google Identity Services -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://apis.google.com/js/api.js" async defer></script>
   
   <!-- Google Fonts: Prompt & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -363,6 +362,55 @@
 
   </main>
 
+  <!-- Google Photos Native Gallery Modal -->
+  <div id="googlePhotosGalleryModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+      <!-- Modal Header -->
+      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="fa-brands fa-google text-rose-400 text-lg"></i>
+          <h3 class="text-sm font-bold">เลือกรูปภาพจาก Google Photos</h3>
+        </div>
+        <button id="btnCloseGoogleGalleryModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 overflow-y-auto space-y-4 flex-1">
+        <div class="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+          <span>คลิกเลือกรูปภาพที่คุณต้องการดึงพิกัด GPS:</span>
+          <button id="btnToggleSelectAllGoogle" class="text-brand-600 hover:text-brand-800 font-semibold underline">
+            เลือกทั้งหมด
+          </button>
+        </div>
+
+        <div id="googlePhotosLoading" class="hidden py-12 text-center text-slate-500 space-y-2">
+          <i class="fa-solid fa-spinner animate-spin text-3xl text-brand-600"></i>
+          <p class="text-sm font-medium">กำลังโหลดรูปภาพจาก Google Photos...</p>
+        </div>
+
+        <div id="googlePhotosGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[55vh] overflow-y-auto p-1">
+          <!-- Dynamic Google Photo items -->
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <span id="googlePhotosSelectedCount" class="text-xs font-semibold text-slate-700">เลือกแล้ว 0 รูป</span>
+        <div class="flex items-center space-x-2">
+          <button id="btnCancelGoogleGallery" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium transition-colors">
+            ยกเลิก
+          </button>
+          <button id="btnImportSelectedGooglePhotos" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
+            <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i>
+            นำเข้ารูปภาพที่เลือก
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Google Photos Client ID Configuration Modal -->
   <div id="googleSettingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
@@ -484,7 +532,8 @@
     // Google API State
     let tokenClient = null;
     let googleAccessToken = null;
-    let pickerApiLoaded = false;
+    let fetchedGoogleMediaItems = [];
+    let selectedGoogleMediaItemIds = new Set();
 
     // DOM Elements
     const fileInput = document.getElementById('fileInput');
@@ -500,6 +549,12 @@
     const btnCancelGoogleModal = document.getElementById('btnCancelGoogleModal');
     const btnSaveGoogleClientId = document.getElementById('btnSaveGoogleClientId');
     const inputGoogleClientId = document.getElementById('inputGoogleClientId');
+
+    const googlePhotosGalleryModal = document.getElementById('googlePhotosGalleryModal');
+    const btnCloseGoogleGalleryModal = document.getElementById('btnCloseGoogleGalleryModal');
+    const btnCancelGoogleGallery = document.getElementById('btnCancelGoogleGallery');
+    const btnToggleSelectAllGoogle = document.getElementById('btnToggleSelectAllGoogle');
+    const btnImportSelectedGooglePhotos = document.getElementById('btnImportSelectedGooglePhotos');
 
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
@@ -574,6 +629,12 @@
       btnCloseGoogleModal.addEventListener('click', closeGoogleSettingsModal);
       btnCancelGoogleModal.addEventListener('click', closeGoogleSettingsModal);
       btnSaveGoogleClientId.addEventListener('click', saveGoogleClientId);
+
+      // Google Gallery Modal Handlers
+      btnCloseGoogleGalleryModal.addEventListener('click', () => googlePhotosGalleryModal.classList.add('hidden'));
+      btnCancelGoogleGallery.addEventListener('click', () => googlePhotosGalleryModal.classList.add('hidden'));
+      btnToggleSelectAllGoogle.addEventListener('click', toggleSelectAllGooglePhotos);
+      btnImportSelectedGooglePhotos.addEventListener('click', importSelectedGooglePhotos);
 
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
@@ -671,7 +732,6 @@
         return;
       }
 
-      // Initialize OAuth 2.0 token client
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: clientId,
         scope: 'https://www.googleapis.com/auth/photoslibrary.readonly',
@@ -681,86 +741,146 @@
             return;
           }
           googleAccessToken = response.access_token;
-          openGooglePickerUI();
+          fetchGooglePhotosGallery();
         },
       });
 
       if (googleAccessToken) {
-        openGooglePickerUI();
+        fetchGooglePhotosGallery();
       } else {
         tokenClient.requestAccessToken({ prompt: 'consent' });
       }
     }
 
-    // Open Google Picker API UI
-    function openGooglePickerUI() {
-      if (window.gapi) {
-        gapi.load('picker', {
-          callback: () => {
-            const view = new google.picker.PhotosView();
-            const picker = new google.picker.PickerBuilder()
-              .addView(view)
-              .setOAuthToken(googleAccessToken)
-              .setCallback(onGooglePickerCallback)
-              .setTitle('เลือกรูปภาพจาก Google Photos')
-              .build();
-            picker.setVisible(true);
-          }
+    // Fetch Google Photos Gallery Native API
+    async function fetchGooglePhotosGallery() {
+      if (!googleAccessToken) return;
+
+      const modal = googlePhotosGalleryModal;
+      const loading = document.getElementById('googlePhotosLoading');
+      const grid = document.getElementById('googlePhotosGrid');
+
+      modal.classList.remove('hidden');
+      loading.classList.remove('hidden');
+      grid.innerHTML = '';
+      selectedGoogleMediaItemIds.clear();
+      updateGoogleGalleryUI();
+
+      try {
+        const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=50', {
+          headers: { Authorization: `Bearer ${googleAccessToken}` }
         });
-      } else {
-        showToast('ไม่สามารถโหลด Google Picker SDK ได้', 'warning');
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        fetchedGoogleMediaItems = data.mediaItems || [];
+        loading.classList.add('hidden');
+
+        if (fetchedGoogleMediaItems.length === 0) {
+          grid.innerHTML = `<div class="col-span-full py-12 text-center text-slate-400 text-xs">ไม่พบรูปภาพในคลัง Google Photos ของคุณ</div>`;
+          return;
+        }
+
+        renderGooglePhotosGrid();
+
+      } catch (err) {
+        loading.classList.add('hidden');
+        console.error('Fetch Google Photos failed:', err);
+        showToast('ไม่สามารถดึงรูปภาพจาก Google Photos ได้: ' + err.message, 'warning');
       }
     }
 
-    // Callback when user picks photos in Google Picker
-    async function onGooglePickerCallback(data) {
-      if (data.action === google.picker.Action.PICKED) {
-        const docs = data.docs;
-        if (!docs || docs.length === 0) return;
+    // Render Google Photos Thumbnail Grid
+    function renderGooglePhotosGrid() {
+      const grid = document.getElementById('googlePhotosGrid');
+      grid.innerHTML = '';
 
-        progressContainer.classList.remove('hidden');
-        updateProgress(0, docs.length, 0);
-        showToast(`กำลังดาวน์โหลดรูปภาพจาก Google Photos (${docs.length} รูป)...`, 'info');
+      fetchedGoogleMediaItems.forEach(item => {
+        const isSelected = selectedGoogleMediaItemIds.has(item.id);
+        const thumbUrl = `${item.baseUrl}=w250-h250-c`;
 
-        const downloadedFiles = [];
+        const card = document.createElement('div');
+        card.className = `relative bg-slate-100 rounded-xl overflow-hidden border ${isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-slate-200'} cursor-pointer group hover:border-brand-400 transition-all select-none`;
 
-        for (let i = 0; i < docs.length; i++) {
-          const doc = docs[i];
-          try {
-            // Fetch photo metadata from Photos Library API
-            const mediaRes = await fetch(`https://photoslibrary.googleapis.com/v1/mediaItems/${doc.id}`, {
-              headers: { Authorization: `Bearer ${googleAccessToken}` }
-            });
-            
-            let photoUrl = null;
-            let fileName = doc.name || `google_photo_${i+1}.jpg`;
+        card.innerHTML = `
+          <div class="w-full h-28 bg-slate-200 relative overflow-hidden">
+            <img src="${thumbUrl}" alt="${item.filename}" class="w-full h-full object-cover">
+            <div class="absolute top-2 right-2 w-6 h-6 rounded-full ${isSelected ? 'bg-brand-600 text-white' : 'bg-slate-900/50 text-white/50 border border-white/60'} flex items-center justify-center text-xs transition-all">
+              <i class="fa-solid fa-check"></i>
+            </div>
+          </div>
+          <div class="p-2 text-[11px] font-medium text-slate-700 truncate" title="${item.filename}">
+            ${item.filename}
+          </div>
+        `;
 
-            if (mediaRes.ok) {
-              const mediaItem = await mediaRes.json();
-              // '=d' parameter forces download of original file with EXIF GPS intact!
-              photoUrl = `${mediaItem.baseUrl}=d`;
-              if (mediaItem.filename) fileName = mediaItem.filename;
-            } else {
-              photoUrl = doc.url;
-            }
-
-            // Fetch Blob of image
-            const blobRes = await fetch(photoUrl);
-            const blob = await blobRes.blob();
-            const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
-            downloadedFiles.push(file);
-
-          } catch (err) {
-            console.warn('Failed downloading Google Photo item:', err);
+        card.addEventListener('click', () => {
+          if (selectedGoogleMediaItemIds.has(item.id)) {
+            selectedGoogleMediaItemIds.delete(item.id);
+          } else {
+            selectedGoogleMediaItemIds.add(item.id);
           }
-        }
+          renderGooglePhotosGrid();
+          updateGoogleGalleryUI();
+        });
 
-        if (downloadedFiles.length > 0) {
-          handleFilesSelected(downloadedFiles);
-        } else {
-          progressContainer.classList.add('hidden');
-          showToast('ไม่สามารถดาวน์โหลดไฟล์จาก Google Photos ได้', 'warning');
+        grid.appendChild(card);
+      });
+    }
+
+    function toggleSelectAllGooglePhotos() {
+      if (selectedGoogleMediaItemIds.size === fetchedGoogleMediaItems.length) {
+        selectedGoogleMediaItemIds.clear();
+      } else {
+        fetchedGoogleMediaItems.forEach(i => selectedGoogleMediaItemIds.add(i.id));
+      }
+      renderGooglePhotosGrid();
+      updateGoogleGalleryUI();
+    }
+
+    function updateGoogleGalleryUI() {
+      const count = selectedGoogleMediaItemIds.size;
+      document.getElementById('googlePhotosSelectedCount').innerText = `เลือกแล้ว ${count} รูป`;
+      btnImportSelectedGooglePhotos.disabled = count === 0;
+      btnToggleSelectAllGoogle.innerText = (count === fetchedGoogleMediaItems.length && count > 0) ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด';
+    }
+
+    // Import Selected Google Photos
+    async function importSelectedGooglePhotos() {
+      if (selectedGoogleMediaItemIds.size === 0) return;
+
+      const selectedItems = fetchedGoogleMediaItems.filter(i => selectedGoogleMediaItemIds.has(i.id));
+      googlePhotosGalleryModal.classList.add('hidden');
+
+      progressContainer.classList.remove('hidden');
+      updateProgress(0, selectedItems.length, 0);
+      showToast(`กำลังดาวน์โหลดรูปภาพจาก Google Photos (${selectedItems.length} รูป)...`, 'info');
+
+      const downloadedFiles = [];
+
+      for (let i = 0; i < selectedItems.length; i++) {
+        const item = selectedItems[i];
+        try {
+          const photoUrl = `${item.baseUrl}=d`;
+          const fileName = item.filename || `google_photo_${i+1}.jpg`;
+
+          const blobRes = await fetch(photoUrl);
+          const blob = await blobRes.blob();
+          const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+          downloadedFiles.push(file);
+        } catch (err) {
+          console.warn('Failed downloading Google Photo item:', item.filename, err);
         }
+      }
+
+      if (downloadedFiles.length > 0) {
+        handleFilesSelected(downloadedFiles);
+      } else {
+        progressContainer.classList.add('hidden');
+        showToast('ไม่สามารถดาวน์โหลดไฟล์จาก Google Photos ได้', 'warning');
       }
     }
 
