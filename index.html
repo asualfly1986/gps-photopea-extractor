@@ -1648,7 +1648,7 @@
         return;
       }
 
-      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด...', 'info');
+      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด (กำลังประมวลผลสัดส่วนภาพแนวตั้ง)...', 'info');
 
       try {
         const { jsPDF } = window.jspdf;
@@ -1662,6 +1662,24 @@
         doc.setFontSize(9);
         doc.setTextColor(100, 116, 139);
         doc.text(`Generated Date: ${formatDate(new Date())}   |   Total Photos: ${extractedItems.length}`, 14, 21);
+
+        // Pre-load images to calculate exact orientation and aspect ratio (Portrait vs Landscape)
+        const loadedImages = {};
+        for (let i = 0; i < extractedItems.length; i++) {
+          const item = extractedItems[i];
+          if (item.thumbnailUrl) {
+            await new Promise((resolve) => {
+              const img = new Image();
+              img.crossOrigin = 'anonymous';
+              img.onload = () => {
+                loadedImages[item.id] = img;
+                resolve();
+              };
+              img.onerror = () => resolve();
+              img.src = item.thumbnailUrl;
+            });
+          }
+        }
 
         const tableData = [];
         for (let i = 0; i < extractedItems.length; i++) {
@@ -1677,27 +1695,48 @@
 
         doc.autoTable({
           startY: 25,
-          head: [['Photo', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
+          head: [['รูปภาพ (Photo)', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 8, minCellHeight: 16, verticalAlign: 'middle' },
+          bodyStyles: { fontSize: 8, minCellHeight: 20, verticalAlign: 'middle' },
           columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 50 },
-            2: { cellWidth: 45 },
-            3: { cellWidth: 45 },
+            0: { cellWidth: 24 },
+            1: { cellWidth: 48 },
+            2: { cellWidth: 44 },
+            3: { cellWidth: 44 },
             4: { cellWidth: 20 }
           },
           didDrawCell: function(data) {
             if (data.section === 'body' && data.column.index === 0) {
               const item = extractedItems[data.row.index];
-              if (item && item.thumbnailUrl) {
+              const loadedImg = item ? loadedImages[item.id] : null;
+
+              if (loadedImg && loadedImg.naturalWidth && loadedImg.naturalHeight) {
                 try {
-                  const img = new Image();
-                  img.src = item.thumbnailUrl;
-                  doc.addImage(img, 'JPEG', data.cell.x + 2, data.cell.y + 1.5, 16, 13);
-                } catch(e) {}
+                  const maxBox = 18; // Max box 18mm x 18mm inside 24mm x 20mm cell
+                  let drawW = maxBox;
+                  let drawH = maxBox;
+
+                  const aspect = loadedImg.naturalWidth / loadedImg.naturalHeight;
+
+                  if (aspect >= 1) {
+                    // Landscape photo (แนวนอน)
+                    drawW = maxBox;
+                    drawH = maxBox / aspect;
+                  } else {
+                    // Portrait photo (แนวตั้ง) -> Maintain true vertical aspect ratio!
+                    drawH = maxBox;
+                    drawW = maxBox * aspect;
+                  }
+
+                  const offsetX = data.cell.x + (data.cell.width - drawW) / 2;
+                  const offsetY = data.cell.y + (data.cell.height - drawH) / 2;
+
+                  doc.addImage(loadedImg, 'JPEG', offsetX, offsetY, drawW, drawH);
+                } catch(e) {
+                  console.warn('PDF image draw error:', e);
+                }
               }
             }
           }
