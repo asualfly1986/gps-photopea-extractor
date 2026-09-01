@@ -173,8 +173,8 @@
       </div>
 
       <!-- Hidden Inputs -->
-      <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif" class="hidden">
-      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif" class="hidden">
+      <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
+      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
     </section>
 
     <!-- Progress Bar -->
@@ -951,9 +951,11 @@
 
     // Helper: Check image file type
     function isImageFile(file) {
+      if (!file || !file.name) return false;
+      if (file.type && file.type.startsWith('image/')) return true;
       const ext = file.name.split('.').pop().toLowerCase();
-      const validExts = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'tiff'];
-      return file.type.startsWith('image/') || validExts.includes(ext);
+      const validExts = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'tiff', 'tif', 'bmp', 'gif', 'avif', 'dng', 'cr2', 'nef', 'arw', 'raw'];
+      return validExts.includes(ext);
     }
 
     // Helper: Format Bytes to human readable
@@ -1000,10 +1002,15 @@
       if (!fileList || fileList.length === 0) return;
 
       const rawFiles = Array.from(fileList);
-      const imageFiles = rawFiles.filter(isImageFile);
+      let imageFiles = rawFiles.filter(isImageFile);
+
+      // Fallback: If no files matched strictly, process all selected raw files
+      if (imageFiles.length === 0) {
+        imageFiles = rawFiles;
+      }
 
       if (imageFiles.length === 0) {
-        showToast('ไม่พบไฟล์รูปภาพที่รองรับในไฟล์ที่เลือก', 'warning');
+        showToast('ไม่พบไฟล์รูปภาพในรายการที่เลือก', 'warning');
         return;
       }
 
