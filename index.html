@@ -268,7 +268,7 @@
           <!-- Filter selector -->
           <select id="filterSelect" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
             <option value="all">แสดงทั้งหมด</option>
-            <option value="pending">⏳ รอแก้ไข (หมุดสีแดง)</option>
+            <option value="pending">⚡ รอแก้ไข (หมุดสีแดง+สายฟ้า)</option>
             <option value="completed">✅ แล้วเสร็จ (หมุดสีเขียว)</option>
             <option value="gps">เฉพาะที่มีพิกัด GPS</option>
             <option value="nogps">เฉพาะที่ไม่มีพิกัด</option>
@@ -1483,7 +1483,7 @@
         const selectElem = document.createElement('select');
         selectElem.className = `text-[11px] font-bold rounded-lg px-2 py-1 border transition-colors cursor-pointer ${isDone ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-rose-50 text-rose-700 border-rose-300'}`;
         selectElem.innerHTML = `
-          <option value="pending" ${!isDone ? 'selected' : ''}>⏳ รอแก้ไข</option>
+          <option value="pending" ${!isDone ? 'selected' : ''}>⚡ รอแก้ไข</option>
           <option value="completed" ${isDone ? 'selected' : ''}>✅ แล้วเสร็จ</option>
         `;
         selectElem.addEventListener('click', (e) => e.stopPropagation());
@@ -1585,7 +1585,9 @@
           ` : `
             <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
               <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
-                <i class="fa-solid fa-camera text-xs"></i>
+                <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-inner">
+                  <i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i>
+                </div>
               </div>
               <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
             </div>
@@ -1614,7 +1616,7 @@
             <div class="flex items-center justify-between pt-1 border-t border-slate-100">
               <span class="text-[11px] font-bold text-slate-500">สถานะ:</span>
               <select onchange="updateItemStatus('${item.id}', this.value)" class="text-[10px] font-bold rounded px-1.5 py-0.5 border cursor-pointer ${isDone ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-rose-50 text-rose-700 border-rose-300'}">
-                <option value="pending" ${!isDone ? 'selected' : ''}>⏳ รอแก้ไข</option>
+                <option value="pending" ${!isDone ? 'selected' : ''}>⚡ รอแก้ไข</option>
                 <option value="completed" ${isDone ? 'selected' : ''}>✅ แล้วเสร็จ</option>
               </select>
             </div>
@@ -2294,7 +2296,7 @@
               <td class="p-2.5 text-center whitespace-nowrap">
                 ${item.status === 'completed' 
                   ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-check mr-1"></i>แล้วเสร็จ</span>` 
-                  : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-hourglass-half mr-1"></i>รอแก้ไข</span>`}
+                  : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-bolt mr-1"></i>รอแก้ไข</span>`}
               </td>
               <td class="p-2.5 text-slate-600 whitespace-nowrap">${item.dateTakenFormatted}</td>
               <td class="p-2.5 text-slate-500 whitespace-nowrap">${item.fileSize}</td>
@@ -2361,7 +2363,9 @@
           \` : \`
             <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
               <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
-                <i class="fa-solid fa-camera text-xs"></i>
+                <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-inner">
+                  <i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i>
+                </div>
               </div>
               <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
             </div>
@@ -2379,7 +2383,7 @@
             <p class="text-[11px] text-slate-500">\${item.dateTakenFormatted}</p>
             <div class="flex items-center justify-between pt-1">
               <p class="text-[11px] font-mono font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block">\${item.lat}, \${item.lng}</p>
-              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded \${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">\${isDone ? '✅ แล้วเสร็จ' : '⏳ รอแก้ไข'}</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded \${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">\${isDone ? '✅ แล้วเสร็จ' : '⚡ รอแก้ไข'}</span>
             </div>
           </div>
         \`;
