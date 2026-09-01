@@ -1342,16 +1342,18 @@
 
       gpsItems.forEach(item => {
         const customIcon = L.divIcon({
-          className: 'custom-map-marker',
+          className: 'custom-red-pin-marker',
           html: `
-            <div class="relative group">
-              <div class="w-8 h-8 rounded-full bg-brand-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform cursor-pointer">
+            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
                 <i class="fa-solid fa-camera text-xs"></i>
               </div>
+              <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
             </div>
           `,
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
+          iconSize: [32, 38],
+          iconAnchor: [16, 38],
+          popupAnchor: [0, -38]
         });
 
         const marker = L.marker([item.lat, item.lng], { icon: customIcon, itemId: item.id });
@@ -2083,7 +2085,22 @@
     const bounds = [];
     items.forEach((item, idx) => {
       if (item.hasGps) {
-        const marker = L.marker([item.lat, item.lng]).addTo(map);
+        const redIcon = L.divIcon({
+          className: 'custom-red-pin-marker',
+          html: `
+            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
+                <i class="fa-solid fa-camera text-xs"></i>
+              </div>
+              <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
+            </div>
+          `,
+          iconSize: [32, 38],
+          iconAnchor: [16, 38],
+          popupAnchor: [0, -38]
+        });
+
+        const marker = L.marker([item.lat, item.lng], { icon: redIcon }).addTo(map);
         const popupHtml = \`
           <div class="p-1 space-y-1.5 max-w-[200px]">
             \${item.base64 ? \`<img src="\${item.base64}" onclick="openModalById(\${idx})" class="w-full h-28 object-cover rounded-lg cursor-pointer border border-slate-200">\` : ''}
