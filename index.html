@@ -1207,7 +1207,7 @@
 
         // Info Column
         const tdInfo = document.createElement('td');
-        tdInfo.className = 'py-2.5 px-3 max-w-[140px] sm:max-w-xs';
+        tdInfo.className = 'py-2.5 px-3 max-w-[200px] sm:max-w-xs lg:max-w-sm';
         tdInfo.innerHTML = `
           <div class="font-medium text-slate-800 truncate text-xs group-hover:text-brand-600" title="${item.fileName}">
             ${item.fileName}
@@ -1361,6 +1361,11 @@
         marker.bindPopup(popupContent);
         markersGroup.addLayer(marker);
       });
+
+      // 🖥️ Desktop Fix: Invalidate map size to force full tile loading without grey areas
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 150);
     }
 
     // Canvas Stamping Engine (Draw GPS Watermark on Image)
@@ -2286,6 +2291,10 @@
 
       const bounds = L.latLngBounds(gpsItems.map(i => [i.lat, i.lng]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+
+      setTimeout(() => {
+        if (map) map.invalidateSize();
+      }, 150);
     }
 
     // Locate single item on Map (Fly and open popup)
