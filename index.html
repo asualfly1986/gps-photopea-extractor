@@ -21,7 +21,7 @@
   <!-- HEIC Converter (heic2any) -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-  <!-- JSZip for Zip Export -->
+  <!-- JSZip for Zip & KMZ Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   <!-- ExcelJS for Excel (.xlsx) with Embedded Images -->
@@ -101,7 +101,7 @@
           <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-sky-100 to-sky-300">
             GPS Photo EXIF Extractor
           </h1>
-          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export PDF / Excel / HTML / CSV / Zip (Client-side 100%)</p>
+          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export KMZ / PDF / Excel / HTML / CSV (Client-side 100%)</p>
         </div>
       </div>
       
@@ -392,91 +392,107 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           
-          <!-- Option 1: PDF Photo Report -->
+          <!-- Option 1: KMZ Google Earth (Embedded Photos in Pins) -->
+          <div id="optExportKmz" class="p-3.5 border-2 border-emerald-500 bg-emerald-50/50 hover:bg-emerald-100/60 rounded-xl cursor-pointer transition-all group flex items-start space-x-3 col-span-1 md:col-span-2 shadow-sm">
+            <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <i class="fa-solid fa-earth-americas text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-emerald-900 group-hover:text-emerald-700 text-xs flex items-center">
+                <span>1. ไฟล์ KMZ สำหรับ Google Earth (ฝังรูปภาพในหมุด)</span>
+                <span class="ml-2 px-1.5 py-0.5 bg-emerald-600 text-white rounded text-[10px] font-semibold">แนะนำ ⭐</span>
+              </h4>
+              <p class="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">
+                ส่งออกไฟล์ KMZ มาตรฐาน Google Earth ที่มีรูปภาพฝังรวมไปกับทุกพิกัดหมุด เมื่อกดที่หมุด รูปภาพประจำพิกัดจะแสดงขึ้นทันที!
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 2: PDF Photo Report -->
           <div id="optExportPdf" class="p-3.5 border-2 border-slate-200 hover:border-rose-500 bg-slate-50 hover:bg-rose-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-file-pdf text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-rose-600 text-xs">1. รายงานเอกสาร PDF</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-rose-600 text-xs">2. รายงานเอกสาร PDF</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ตารางสรุปรายงานที่มีพรีวิวรูปภาพ พิกัด GPS วันเวลา และขนาดไฟล์ สวยงามพร้อมพิมพ์
               </p>
             </div>
           </div>
 
-          <!-- Option 2: Excel (.xlsx) Embedded Photos -->
+          <!-- Option 3: Excel (.xlsx) Embedded Photos -->
           <div id="optExportExcel" class="p-3.5 border-2 border-slate-200 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-file-excel text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-emerald-700 text-xs">2. ไฟล์ Excel (.xlsx) ฝังรูป</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-emerald-700 text-xs">3. ไฟล์ Excel (.xlsx) ฝังรูป</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ส่งออกเป็นไฟล์ Excel จริง โดยฝังรูปภาพลงในช่องตารางเซลล์คู่กับพิกัด
               </p>
             </div>
           </div>
 
-          <!-- Option 3: Google My Maps CSV Import -->
+          <!-- Option 4: Google My Maps CSV Import -->
           <div id="optExportMyMaps" class="p-3.5 border-2 border-slate-200 hover:border-blue-600 bg-slate-50 hover:bg-blue-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-map-pin text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-blue-600 text-xs">3. ไฟล์สำหรับ Google My Maps 🗺️</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-blue-600 text-xs">4. ไฟล์สำหรับ Google My Maps 🗺️</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ไฟล์นำเข้าสำหรับ Google My Maps โดยเฉพาะ (ไม่มีรูปฝัง ไร้ผสานเซลล์ นำเข้าปักหมุดผ่าน 100%)
               </p>
             </div>
           </div>
 
-          <!-- Option 3: Standalone HTML Report -->
+          <!-- Option 5: Standalone HTML Report -->
           <div id="optExportHtml" class="p-3.5 border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-code text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-sky-600 text-xs">3. รายงานเว็บ HTML (Offline)</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-sky-600 text-xs">5. รายงานเว็บ HTML (Offline)</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 บันทึกเป็นเว็บรายงานแผ่นเดียวพร้อมแผนที่และรูปฝังในตัว ทำซ้ำได้หลายรอบ เปิดดูแบบออฟไลน์ได้
               </p>
             </div>
           </div>
 
-          <!-- Option 4: GPS Stamp Zip -->
+          <!-- Option 6: GPS Stamp Zip -->
           <div id="optExportStamped" class="p-3.5 border-2 border-slate-200 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-stamp text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-amber-600 text-xs">4. รูปภาพสลักพิกัด (Zip)</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-amber-600 text-xs">6. รูปภาพสลักพิกัด (Zip)</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 สลักพิกัด GPS และวันเวลาลงบนรูปภาพโดยตรง แล้วดาวน์โหลดรวมเป็นไฟล์ Zip
               </p>
             </div>
           </div>
 
-          <!-- Option 5: Renamed Zip -->
+          <!-- Option 7: Renamed Zip -->
           <div id="optExportRenamed" class="p-3.5 border-2 border-slate-200 hover:border-purple-600 bg-slate-50 hover:bg-purple-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-file-signature text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-purple-600 text-xs">5. เปลี่ยนชื่อไฟล์ตามพิกัด (Zip)</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-purple-600 text-xs">7. เปลี่ยนชื่อไฟล์ตามพิกัด (Zip)</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ดาวน์โหลดภาพต้นฉบับโดยเปลี่ยนชื่อไฟล์ให้อ่านพิกัดตรงรูป เช่น `13.7367_100.5231_IMG.jpg`
               </p>
             </div>
           </div>
 
-          <!-- Option 6: Thai CSV -->
-          <div id="optExportCsv" class="p-3.5 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+          <!-- Option 8: Thai CSV -->
+          <div id="optExportCsv" class="p-3.5 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3 col-span-1 md:col-span-2">
             <div class="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-file-csv text-base"></i>
             </div>
             <div>
-              <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-xs">6. ตารางข้อมูล CSV (ภาษาไทย)</h4>
+              <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-xs">8. ตารางข้อมูล CSV (ภาษาไทย)</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ไฟล์ CSV ภาษาไทย (UTF-8 BOM) นำไปเปิดใน Microsoft Excel ได้ทันที
               </p>
@@ -602,6 +618,8 @@
     const exportModal = document.getElementById('exportModal');
     const btnCloseExportModal = document.getElementById('btnCloseExportModal');
     const btnCancelExportModal = document.getElementById('btnCancelExportModal');
+
+    const optExportKmz = document.getElementById('optExportKmz');
     const optExportPdf = document.getElementById('optExportPdf');
     const optExportExcel = document.getElementById('optExportExcel');
     const optExportMyMaps = document.getElementById('optExportMyMaps');
@@ -783,6 +801,11 @@
       btnCloseExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
       btnCancelExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
 
+      optExportKmz.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportKmzFile();
+      });
+
       optExportPdf.addEventListener('click', () => {
         exportModal.classList.add('hidden');
         exportPdfReport();
@@ -876,6 +899,17 @@
       } catch (e) {
         return 'ไม่ทราบวันที่';
       }
+    }
+
+    // Helper: Escape XML special characters
+    function escapeXml(unsafe) {
+      if (!unsafe) return '';
+      return String(unsafe)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
     }
 
     // Handle File Processing Pipeline
@@ -1326,7 +1360,117 @@
       }
     }
 
-    // 📄 Export Option 1: PDF Photo Report Generator
+    // 🗺️ Export Option 1: KMZ Google Earth Generator (Photos Embedded inside Pins)
+    async function exportKmzFile() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับส่งออก KMZ', 'warning');
+        return;
+      }
+
+      const gpsItems = extractedItems.filter(i => i.hasGps);
+      if (gpsItems.length === 0) {
+        showToast('ไม่พบรูปภาพที่มีพิกัด GPS สำหรับสร้างไฟล์ KMZ', 'warning');
+        return;
+      }
+
+      if (!window.JSZip) {
+        showToast('กำลังโหลดระบบบีบอัด Zip... ลองใหม่อีกครั้งในครู่เดียว', 'warning');
+        return;
+      }
+
+      showToast('กำลังสร้างไฟล์ KMZ สำหรับ Google Earth (พร้อมรูปฝังในหมุด)...', 'info');
+
+      progressContainer.classList.remove('hidden');
+      updateProgress(0, gpsItems.length, gpsItems.length);
+      progressStatusText.innerText = 'กำลังประมวลผลหมุดและฝังรูปภาพลงในไฟล์ KMZ...';
+
+      const zip = new JSZip();
+
+      let kmlPlacemarks = '';
+      for (let i = 0; i < gpsItems.length; i++) {
+        const item = gpsItems[i];
+        const safeFileName = item.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const imagePathInZip = `images/img_${i}_${safeFileName}`;
+
+        // Add image file to ZIP
+        try {
+          if (item.file) {
+            zip.file(imagePathInZip, item.file);
+          } else if (item.thumbnailUrl) {
+            const res = await fetch(item.thumbnailUrl);
+            const blob = await res.blob();
+            zip.file(imagePathInZip, blob);
+          }
+        } catch(e) {
+          console.warn('Error adding image to KMZ:', item.fileName, e);
+        }
+
+        // Generate KML Placemark XML (Note: KML uses Longitude,Latitude order!)
+        kmlPlacemarks += `
+    <Placemark>
+      <name>${escapeXml(item.fileName)}</name>
+      <description><![CDATA[
+        <div style="font-family: Arial, sans-serif; max-width: 320px; color: #1e293b;">
+          <h3 style="margin-top: 0; color: #0284c7;">${escapeXml(item.fileName)}</h3>
+          <p style="margin: 4px 0;"><b>พิกัด GPS:</b> ${item.lat}, ${item.lng}</p>
+          <p style="margin: 4px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
+          <p style="margin: 4px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
+          <div style="margin-top: 10px; text-align: center;">
+            <img src="${imagePathInZip}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
+          </div>
+          <p style="margin-top: 10px; text-align: right;">
+            <a href="${item.googleMapsUrl}" target="_blank" style="color: #059669; text-decoration: none; font-weight: bold;">เปิดใน Google Maps &#8599;</a>
+          </p>
+        </div>
+      ]]></description>
+      <styleUrl>#photo-marker-style</styleUrl>
+      <Point>
+        <coordinates>${item.lng},${item.lat},0</coordinates>
+      </Point>
+    </Placemark>`;
+
+        updateProgress(i + 1, gpsItems.length, gpsItems.length);
+      }
+
+      const kmlDocument = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>GPS Photo Coordinates &amp; Photos</name>
+    <description>ส่งออกโดย GPS Photo EXIF Extractor (Client-Side 100%)</description>
+    <Style id="photo-marker-style">
+      <IconStyle>
+        <scale>1.1</scale>
+        <Icon>
+          <href>http://maps.google.com/mapfiles/kml/shapes/camera.png</href>
+        </Icon>
+      </IconStyle>
+    </Style>
+    ${kmlPlacemarks}
+  </Document>
+</kml>`;
+
+      zip.file('doc.kml', kmlDocument);
+
+      progressStatusText.innerText = 'กำลังบีบอัดไฟล์ KMZ...';
+      const kmzBlob = await zip.generateAsync({ type: 'blob' });
+
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+      
+      const url = URL.createObjectURL(kmzBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GPS_Photos_GoogleEarth_${timestamp}.kmz`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      progressContainer.classList.add('hidden');
+      showToast(`ดาวน์โหลดไฟล์ KMZ เรียบร้อยแล้ว (${gpsItems.length} หมุดพร้อมรูปภาพ)!`, 'success');
+    }
+
+    // 📄 Export Option 2: PDF Photo Report Generator
     async function exportPdfReport() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับสร้างรายงาน PDF', 'warning');
@@ -1398,7 +1542,7 @@
       }
     }
 
-    // 📊 Export Option 2: Excel (.xlsx) with Embedded Photos
+    // 📊 Export Option 3: Excel (.xlsx) with Embedded Photos
     async function exportExcelWithImages() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับส่งออก Excel', 'warning');
@@ -1501,7 +1645,7 @@
       }
     }
 
-    // 🗺️ Export Option 3: Google My Maps Clean CSV Export
+    // 🗺️ Export Option 4: Google My Maps Clean CSV Export
     function exportGoogleMyMaps() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับส่งออก Google My Maps', 'warning');
@@ -1546,7 +1690,7 @@
       showToast(`ส่งออกไฟล์สำหรับ Google My Maps เรียบร้อยแล้ว (${gpsItems.length} หมุด)!`, 'success');
     }
 
-    // 🌐 Export Option 3: Standalone HTML Offline Report Generator
+    // 🌐 Export Option 5: Standalone HTML Offline Report Generator
     async function exportHtmlReport() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับสร้างรายงาน HTML', 'warning');
@@ -1687,7 +1831,7 @@
       }
     }
 
-    // Export Mode 4: Zip of Stamped Images
+    // Export Mode 6: Zip of Stamped Images
     async function exportStampedImagesZip() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
@@ -1740,7 +1884,7 @@
       showToast(`ดาวน์โหลด Zip รูปสลักพิกัดเรียบร้อยแล้ว (${extractedItems.length} รูป)!`, 'success');
     }
 
-    // Export Mode 5: Zip of Renamed Original Images
+    // Export Mode 7: Zip of Renamed Original Images
     async function exportRenamedOriginalsZip() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
