@@ -2578,7 +2578,7 @@
       }
     }
 
-    // 📊 Export Option 4: Excel (.xlsx) with Embedded Photos
+    // 📊 Export Option 4: Excel (.xlsx) with Embedded Photos (Auto-rotated Upright)
     async function exportExcelWithImages() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับส่งออก Excel', 'warning');
@@ -2590,28 +2590,20 @@
         return;
       }
 
-      showToast('กำลังสร้างไฟล์ Excel (.xlsx) พร้อมฝังรูปภาพ...', 'info');
+      showToast('กำลังสร้างไฟล์ Excel (.xlsx) พร้อมหมุนปรับทิศทางภาพแนวตั้งอัตโนมัติ...', 'info');
 
       try {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('GPS Photo Data');
 
-        // Title Header Banner
-        worksheet.mergeCells('A1:I1');
-        const titleCell = worksheet.getCell('A1');
-        titleCell.value = 'รายงานข้อมูลรูปภาพและพิกัด GPS (GPS Photo EXIF Extraction Report)';
-        titleCell.font = { name: 'Prompt', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
-        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0284C7' } };
-        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-        worksheet.getRow(1).height = 32;
-
-        // Table Column Headers
+        // Table Column Headers (Row 1 - No Blue Title Row)
         const headers = ['รูปภาพ (Photo)', 'ชื่อไฟล์ (File Name)', 'Latitude', 'Longitude', 'พิกัดรวม (Coordinates)', 'สถานะ (Status)', 'พาหนะ (Vehicle)', 'วันที่ถ่ายภาพ (Date Taken)', 'Google Maps Link'];
         worksheet.addRow(headers);
-        const headerRow = worksheet.getRow(2);
-        headerRow.height = 24;
-        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        const headerRow = worksheet.getRow(1);
+        headerRow.height = 26;
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10, name: 'Prompt' };
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+        headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
 
         worksheet.columns = [
           { width: 16 }, // Photo
@@ -2627,7 +2619,7 @@
 
         for (let i = 0; i < extractedItems.length; i++) {
           const item = extractedItems[i];
-          const rowIndex = i + 3;
+          const rowIndex = i + 2; // Rows start at Row 2 now (No title row)
 
           const row = worksheet.addRow([
             '',
@@ -2640,27 +2632,47 @@
             item.dateTakenFormatted,
             item.googleMapsUrl
           ]);
-          row.height = 52;
+          row.height = 58;
           row.alignment = { vertical: 'middle' };
 
-          // Embed Image into Cell A[rowIndex]
-          if (item.thumbnailUrl) {
-            try {
-              const response = await fetch(item.thumbnailUrl);
-              const arrayBuffer = await response.arrayBuffer();
+          // Embed EXIF Auto-Rotated Upright Image into Cell A[rowIndex]
+          try {
+            const corrected = await getExifCorrectedImageDataUrl(item);
+            if (corrected && corrected.dataUrl) {
+              const base64Data = corrected.dataUrl.split(',')[1];
+              const binaryStr = atob(base64Data);
+              const len = binaryStr.length;
+              const bytes = new Uint8Array(len);
+              for (let b = 0; b < len; b++) {
+                bytes[b] = binaryStr.charCodeAt(b);
+              }
+
               const imageId = workbook.addImage({
-                buffer: arrayBuffer,
+                buffer: bytes.buffer,
                 extension: 'jpeg',
               });
 
+              // Fit thumbnail nicely inside cell A[rowIndex]
+              const maxDim = 54;
+              let imgW = maxDim;
+              let imgH = maxDim;
+              const aspect = corrected.width / corrected.height;
+              if (aspect >= 1) {
+                imgW = maxDim;
+                imgH = Math.round(maxDim / aspect);
+              } else {
+                imgH = maxDim;
+                imgW = Math.round(maxDim * aspect);
+              }
+
               worksheet.addImage(imageId, {
                 tl: { col: 0, row: rowIndex - 1 },
-                ext: { width: 62, height: 50 },
+                ext: { width: imgW, height: imgH },
                 editAs: 'oneCell'
               });
-            } catch (imgErr) {
-              console.warn('Excel image embed error:', imgErr);
             }
+          } catch (imgErr) {
+            console.warn('Excel image embed error:', imgErr);
           }
         }
 
@@ -2678,7 +2690,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        showToast('ดาวน์โหลดไฟล์ Excel (.xlsx) ฝังรูปภาพเรียบร้อยแล้ว!', 'success');
+        showToast('ดาวน์โหลดไฟล์ Excel (.xlsx) หมุนภาพแนวตั้งอัตโนมัติเรียบร้อยแล้ว!', 'success');
       } catch (excelErr) {
         console.error('Excel generation error:', excelErr);
         showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' + excelErr.message, 'warning');
