@@ -1989,10 +1989,10 @@
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100">
-          ${itemsWithBase64.map(item => `
+          ${itemsWithBase64.map((item, idx) => `
             <tr class="hover:bg-sky-50/50 transition-colors">
               <td class="p-3">
-                ${item.base64 ? `<img src="${item.base64}" onclick="openModal('${item.base64}', '${escapeXml(item.fileName)}')" class="w-14 h-14 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer hover:scale-105 transition-transform">` : '-'}
+                ${item.base64 ? `<img src="${item.base64}" onclick="openModalById(${idx})" class="w-14 h-14 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer hover:scale-105 transition-transform">` : '-'}
               </td>
               <td class="p-3 font-semibold text-slate-800">${escapeXml(item.fileName)}</td>
               <td class="p-3 font-mono ${item.hasGps ? 'text-emerald-600 font-bold' : 'text-amber-600'}">
@@ -2029,12 +2029,12 @@
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd' }).addTo(map);
     
     const bounds = [];
-    items.forEach(item => {
+    items.forEach((item, idx) => {
       if (item.hasGps) {
         const marker = L.marker([item.lat, item.lng]).addTo(map);
         const popupHtml = \`
           <div class="p-1 space-y-1.5 max-w-[200px]">
-            \${item.base64 ? \`<img src="\${item.base64}" onclick="openModal('\${item.base64}', '\${item.fileName}')" class="w-full h-28 object-cover rounded-lg cursor-pointer border border-slate-200">\` : ''}
+            \${item.base64 ? \`<img src="\${item.base64}" onclick="openModalById(\${idx})" class="w-full h-28 object-cover rounded-lg cursor-pointer border border-slate-200">\` : ''}
             <p class="font-bold text-xs text-slate-900 truncate" title="\${item.fileName}">\${item.fileName}</p>
             <p class="text-[11px] text-slate-500">\${item.dateTakenFormatted}</p>
             <p class="text-[11px] font-mono font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100 inline-block">\${item.lat}, \${item.lng}</p>
@@ -2049,9 +2049,11 @@
       map.fitBounds(bounds, { padding: [40, 40] });
     }
 
-    function openModal(src, title) {
-      document.getElementById('modalImg').src = src;
-      document.getElementById('modalTitle').innerText = title || '';
+    function openModalById(idx) {
+      const item = items[idx];
+      if (!item || !item.base64) return;
+      document.getElementById('modalImg').src = item.base64;
+      document.getElementById('modalTitle').innerText = item.fileName || '';
       const m = document.getElementById('imgModal');
       m.classList.remove('hidden');
       m.classList.add('flex');
