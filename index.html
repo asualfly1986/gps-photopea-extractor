@@ -2098,6 +2098,46 @@
       });
     }
 
+    // Helper: Generate crisp Canvas Text Image for PDF rendering
+    function createTextCanvasImage(text, options = {}) {
+      const {
+        width = 200,
+        height = 50,
+        font = 'bold 20px Prompt, sans-serif',
+        color = '#1e293b',
+        bgColor = null,
+        align = 'center'
+      } = options;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+
+      if (bgColor) {
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      ctx.fillStyle = color;
+      ctx.font = font;
+      ctx.textBaseline = 'middle';
+
+      let x = width / 2;
+      if (align === 'left') {
+        x = 10;
+        ctx.textAlign = 'left';
+      } else if (align === 'right') {
+        x = width - 10;
+        ctx.textAlign = 'right';
+      } else {
+        ctx.textAlign = 'center';
+      }
+
+      ctx.fillText(text, x, height / 2);
+      return canvas.toDataURL('image/png');
+    }
+
     // 📄 Export Option 3: PDF Photo Report Generator
     async function exportPdfReport() {
       if (extractedItems.length === 0) {
@@ -2105,33 +2145,39 @@
         return;
       }
 
-      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด (หมุนปรับทิศทางภาพแนวตั้งอัตโนมัติ)...', 'info');
+      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด (ภาษาไทยคมชัด 100%)...', 'info');
 
       try {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
 
-        // Header Title & Metadata
-        doc.setFontSize(16);
-        doc.setTextColor(2, 132, 199);
-        doc.text('GPS Photo EXIF Extraction Report', 14, 15);
+        // Header Title Canvas Banner for crisp Thai rendering
+        const bannerCanvas = document.createElement('canvas');
+        bannerCanvas.width = 900;
+        bannerCanvas.height = 70;
+        const bCtx = bannerCanvas.getContext('2d');
+        bCtx.fillStyle = '#0284c7';
+        bCtx.fillRect(0, 0, 900, 70);
+        bCtx.fillStyle = '#ffffff';
+        bCtx.font = 'bold 24px Prompt, sans-serif';
+        bCtx.textBaseline = 'middle';
+        bCtx.fillText('รายงานสรุปรูปภาพและพิกัด GPS (GPS Photo EXIF Report)', 20, 26);
 
-        doc.setFontSize(9);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Generated Date: ${formatDate(new Date())}   |   Total Photos: ${extractedItems.length}`, 14, 21);
+        bCtx.font = '17px Prompt, sans-serif';
+        bCtx.fillStyle = '#e0f2fe';
+        bCtx.fillText(`วันที่สร้างรายงาน: ${formatDate(new Date())}   |   รูปภาพรวม: ${extractedItems.length} รายการ (พบพิกัด ${extractedItems.filter(i=>i.hasGps).length} รูป)`, 20, 52);
+        const bannerDataUrl = bannerCanvas.toDataURL('image/png');
+        doc.addImage(bannerDataUrl, 'PNG', 14, 10, 182, 14);
 
-        // Generate Thai header image via Canvas for crisp PDF rendering
-        const headerCanvas = document.createElement('canvas');
-        headerCanvas.width = 140;
-        headerCanvas.height = 45;
-        const hCtx = headerCanvas.getContext('2d');
-        hCtx.fillStyle = '#0284c7';
-        hCtx.fillRect(0, 0, 140, 45);
-        hCtx.fillStyle = '#ffffff';
-        hCtx.font = 'bold 22px Prompt, sans-serif';
-        hCtx.textBaseline = 'middle';
-        hCtx.fillText('รูปภาพ', 12, 22);
-        const headerDataUrl = headerCanvas.toDataURL('image/png');
+        // Pre-render Thai Header Canvas Images
+        const headerImages = {
+          0: createTextCanvasImage('รูปภาพ', { width: 160, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          1: createTextCanvasImage('ชื่อไฟล์', { width: 220, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
+          2: createTextCanvasImage('พิกัด GPS', { width: 200, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
+          3: createTextCanvasImage('วันที่ถ่ายภาพ', { width: 170, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          4: createTextCanvasImage('สถานะ', { width: 130, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          5: createTextCanvasImage('พาหนะ', { width: 130, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' })
+        };
 
         // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Vertical)
         const loadedImages = {};
@@ -2150,80 +2196,99 @@
           tableData.push([
             '', // Image column placeholder
             item.fileName,
-            item.hasGps ? `${item.lat}, ${item.lng}` : 'No GPS',
+            item.hasGps ? `${item.lat}, ${item.lng}` : 'ไม่มีข้อมูล GPS',
             item.dateTakenFormatted,
-            item.status === 'completed' ? 'Completed' : 'Pending',
-            item.vehicle || 'คนปีนตัด'
+            '', // Status rendered via Canvas
+            ''  // Vehicle rendered via Canvas
           ]);
         }
 
         doc.autoTable({
-          startY: 25,
-          margin: { top: 25, bottom: 24, left: 14, right: 14 },
+          startY: 28,
+          margin: { top: 28, bottom: 24, left: 14, right: 14 },
           rowPageBreak: 'avoid',
-          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Status', 'Vehicle']],
+          head: [['', '', '', '', '', '']],
           body: tableData,
           theme: 'grid',
-          headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+          headStyles: { fillColor: [2, 132, 199], minCellHeight: 8 },
           bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
-            0: { cellWidth: 26 }, // Photo column width
-            1: { cellWidth: 42 },
-            2: { cellWidth: 38 },
-            3: { cellWidth: 32 },
-            4: { cellWidth: 22, halign: 'center' },
-            5: { cellWidth: 22, halign: 'center' }
-          },
-          didParseCell: function(data) {
-            if (data.section === 'body' && data.column.index === 4) {
-              if (data.cell.raw === 'Completed') {
-                data.cell.styles.textColor = [16, 185, 129];
-                data.cell.styles.fontStyle = 'bold';
-              } else {
-                data.cell.styles.textColor = [225, 29, 72];
-                data.cell.styles.fontStyle = 'bold';
-              }
-            }
+            0: { cellWidth: 26 }, // Photo
+            1: { cellWidth: 42 }, // File Name
+            2: { cellWidth: 38 }, // GPS Coords
+            3: { cellWidth: 32 }, // Date
+            4: { cellWidth: 22, halign: 'center' }, // Status
+            5: { cellWidth: 22, halign: 'center' }  // Vehicle
           },
           didDrawCell: function(data) {
-            if (data.section === 'head' && data.column.index === 0) {
-              try {
-                // Render crisp Thai "รูปภาพ" header in cell
-                doc.addImage(headerDataUrl, 'PNG', data.cell.x + 1, data.cell.y + 1, 24, 6);
-              } catch(e) {}
+            // Draw Thai Headers
+            if (data.section === 'head') {
+              const hImg = headerImages[data.column.index];
+              if (hImg) {
+                try {
+                  doc.addImage(hImg, 'PNG', data.cell.x + 0.5, data.cell.y + 0.5, data.cell.width - 1, data.cell.height - 1);
+                } catch(e) {}
+              }
             }
 
-            if (data.section === 'body' && data.column.index === 0) {
+            if (data.section === 'body') {
               const item = extractedItems[data.row.index];
-              const imgObj = item ? loadedImages[item.id] : null;
+              if (!item) return;
 
-              if (imgObj && imgObj.dataUrl) {
-                try {
-                  const maxW = 20; // 20mm max width inside 26mm cell (3mm padding left/right)
-                  const maxH = 20; // 20mm max height inside 22mm cell (1mm padding top/bottom)
-                  
-                  let drawW = maxW;
-                  let drawH = maxH;
-
-                  const aspect = imgObj.width / imgObj.height;
-
-                  if (aspect >= 1) {
-                    // Landscape photo (แนวนอน)
-                    drawW = maxW;
-                    drawH = maxW / aspect;
-                  } else {
-                    // Portrait photo (แนวตั้งตรงเป๊ะ!)
-                    drawH = maxH;
-                    drawW = maxH * aspect;
+              // Column 0: Photo Thumbnail
+              if (data.column.index === 0) {
+                const imgObj = loadedImages[item.id];
+                if (imgObj && imgObj.dataUrl) {
+                  try {
+                    const maxW = 20;
+                    const maxH = 20;
+                    let drawW = maxW;
+                    let drawH = maxH;
+                    const aspect = imgObj.width / imgObj.height;
+                    if (aspect >= 1) {
+                      drawW = maxW;
+                      drawH = maxW / aspect;
+                    } else {
+                      drawH = maxH;
+                      drawW = maxH * aspect;
+                    }
+                    const offsetX = data.cell.x + (data.cell.width - drawW) / 2;
+                    const offsetY = data.cell.y + (data.cell.height - drawH) / 2;
+                    doc.addImage(imgObj.dataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
+                  } catch(e) {
+                    console.warn('PDF image draw error:', e);
                   }
-
-                  const offsetX = data.cell.x + (data.cell.width - drawW) / 2;
-                  const offsetY = data.cell.y + (data.cell.height - drawH) / 2;
-
-                  doc.addImage(imgObj.dataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
-                } catch(e) {
-                  console.warn('PDF image draw error:', e);
                 }
+              }
+
+              // Column 4: Status Badge (แล้วเสร็จ / รอแก้ไข)
+              if (data.column.index === 4) {
+                const isDone = item.status === 'completed';
+                const statusImg = createTextCanvasImage(isDone ? 'แล้วเสร็จ' : 'รอแก้ไข', {
+                  width: 140,
+                  height: 45,
+                  bgColor: isDone ? '#ecfdf5' : '#fff1f2',
+                  color: isDone ? '#047857' : '#be123c',
+                  font: 'bold 20px Prompt, sans-serif'
+                });
+                try {
+                  doc.addImage(statusImg, 'PNG', data.cell.x + 1.5, data.cell.y + (data.cell.height - 7) / 2, data.cell.width - 3, 7);
+                } catch(e) {}
+              }
+
+              // Column 5: Vehicle Badge (คนปีนตัด, รถกระเช้า, รถกระเช้าHotline, รถเครน, รถเครนใหญ่)
+              if (data.column.index === 5) {
+                const vVal = item.vehicle || 'คนปีนตัด';
+                const vehicleImg = createTextCanvasImage(vVal, {
+                  width: 150,
+                  height: 45,
+                  bgColor: '#f8fafc',
+                  color: '#334155',
+                  font: 'bold 18px Prompt, sans-serif'
+                });
+                try {
+                  doc.addImage(vehicleImg, 'PNG', data.cell.x + 1.5, data.cell.y + (data.cell.height - 7) / 2, data.cell.width - 3, 7);
+                } catch(e) {}
               }
             }
           }
@@ -2232,7 +2297,7 @@
         const now = new Date();
         const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
         doc.save(`GPS_Photo_Report_${timestamp}.pdf`);
-        showToast('ดาวน์โหลดรายงาน PDF เรียบร้อยแล้ว!', 'success');
+        showToast('ดาวน์โหลดรายงาน PDF ภาษาไทยเรียบร้อยแล้ว!', 'success');
       } catch (err) {
         console.error('PDF generation error:', err);
         showToast('เกิดข้อผิดพลาดในการสร้าง PDF: ' + err.message, 'warning');
