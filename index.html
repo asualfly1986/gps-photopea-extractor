@@ -24,6 +24,13 @@
   <!-- JSZip for Zip Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+  <!-- ExcelJS for Excel (.xlsx) with Embedded Images -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+
+  <!-- jsPDF & AutoTable for PDF Reports -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
   <!-- Google Fonts: Prompt & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -94,7 +101,7 @@
           <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-sky-100 to-sky-300">
             GPS Photo EXIF Extractor
           </h1>
-          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export CSV/รูปภาพประทับตรา (Client-side 100%)</p>
+          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export PDF / Excel / HTML / CSV / Zip (Client-side 100%)</p>
         </div>
       </div>
       
@@ -230,7 +237,7 @@
         <div class="bg-white p-4 rounded-xl shadow-sm border border-brand-100 flex items-center justify-between col-span-2 sm:col-span-1">
           <div class="flex items-center space-x-3">
             <div class="w-10 h-10 rounded-lg bg-sky-50 text-brand-600 flex items-center justify-center shrink-0">
-              <i class="fa-solid fa-file-csv text-lg"></i>
+              <i class="fa-solid fa-file-export text-lg"></i>
             </div>
             <div>
               <p class="text-xs text-slate-500">สถานะ</p>
@@ -261,26 +268,20 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center justify-end gap-2.5 w-full md:w-auto">
-          <!-- Export CSV -->
-          <button id="btnExportCsv" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
-            <i class="fa-solid fa-file-excel mr-1.5 text-sm"></i>
-            <span>Export CSV</span>
-          </button>
-
-          <!-- Export Stamped Images / Zip -->
-          <button id="btnOpenExportModal" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
-            <i class="fa-solid fa-file-zipper mr-1.5 text-sm"></i>
-            <span>ดาวน์โหลดรูปภาพ (Zip)</span>
+          <!-- Master Export Button -->
+          <button id="btnOpenExportModal" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2.5 bg-gradient-to-r from-brand-600 to-sky-600 hover:from-brand-700 hover:to-sky-700 active:from-brand-800 active:to-sky-800 text-white text-xs font-bold rounded-xl shadow-md shadow-brand-500/20 transition-all cursor-pointer">
+            <i class="fa-solid fa-file-export mr-2 text-sm"></i>
+            <span>ส่งออกข้อมูล & รายงาน (Export)</span>
           </button>
 
           <!-- Fit Map Bounds -->
-          <button id="btnFitMap" class="inline-flex items-center justify-center px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-medium rounded-lg transition-all cursor-pointer" title="ปรับมุมมองแผนที่ให้ครอบคลุมทุกหมุด">
+          <button id="btnFitMap" class="inline-flex items-center justify-center px-3 py-2.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-medium rounded-xl transition-all cursor-pointer" title="ปรับมุมมองแผนที่ให้ครอบคลุมทุกหมุด">
             <i class="fa-solid fa-expand mr-1.5"></i>
             <span class="hidden sm:inline">โฟกัสแผนที่</span>
           </button>
 
           <!-- Clear All -->
-          <button id="btnClearAll" class="inline-flex items-center justify-center px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium rounded-lg transition-all cursor-pointer" title="ล้างข้อมูลทั้งหมด">
+          <button id="btnClearAll" class="inline-flex items-center justify-center px-3 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium rounded-xl transition-all cursor-pointer" title="ล้างข้อมูลทั้งหมด">
             <i class="fa-solid fa-trash-can mr-1.5"></i>
             <span class="hidden sm:inline">ล้างข้อมูล</span>
           </button>
@@ -371,14 +372,14 @@
 
   </main>
 
-  <!-- Export Options Modal -->
+  <!-- Export Master Modal -->
   <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+    <div class="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
       <!-- Modal Header -->
       <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
         <div class="flex items-center space-x-2">
-          <i class="fa-solid fa-file-zipper text-brand-400 text-lg"></i>
-          <h3 class="text-sm font-bold">ส่งออกดาวน์โหลดไฟล์รูปภาพ (Export Options)</h3>
+          <i class="fa-solid fa-file-export text-sky-400 text-lg"></i>
+          <h3 class="text-sm font-bold">เมนูส่งออกข้อมูล & รายงาน (Export Options)</h3>
         </div>
         <button id="btnCloseExportModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
           <i class="fa-solid fa-xmark text-lg"></i>
@@ -386,41 +387,89 @@
       </div>
 
       <!-- Modal Body -->
-      <div class="p-5 space-y-4 text-xs text-slate-600">
-        <p class="text-slate-700 font-medium">โปรดเลือกรูปแบบการส่งออกไฟล์รูปภาพที่คุณต้องการดาวน์โหลด:</p>
+      <div class="p-5 space-y-4 text-xs overflow-y-auto max-h-[70vh]">
+        <p class="text-slate-700 font-medium">เลือกรูปแบบไฟล์และรายงานที่คุณต้องการส่งออก:</p>
 
-        <!-- Option 1: GPS Stamp Zip -->
-        <div id="optExportStamped" class="p-4 border-2 border-slate-200 hover:border-brand-500 bg-slate-50 hover:bg-sky-50/50 rounded-xl cursor-pointer transition-all group">
-          <div class="flex items-start space-x-3">
-            <div class="w-10 h-10 rounded-lg bg-brand-500 text-white flex items-center justify-center shrink-0 shadow-md">
-              <i class="fa-solid fa-stamp text-lg"></i>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          
+          <!-- Option 1: PDF Photo Report -->
+          <div id="optExportPdf" class="p-3.5 border-2 border-slate-200 hover:border-rose-500 bg-slate-50 hover:bg-rose-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-rose-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-pdf text-base"></i>
             </div>
-            <div class="flex-1">
-              <h4 class="font-bold text-slate-800 group-hover:text-brand-600 text-sm">
-                1. รูปภาพสลักประทับพิกัด GPS (GPS Stamp Zip)
-              </h4>
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                สลักพิกัด GPS (`Latitude, Longitude`), วันเวลาถ่ายภาพ ลงบนแถบด้านล่างของรูปภาพโดยตรง รวมเป็นไฟล์ `.ZIP` (เหมาะสำหรับทำรายงาน / ส่งมอบงาน)
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-rose-600 text-xs">1. รายงานเอกสาร PDF</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                ตารางสรุปรายงานที่มีพรีวิวรูปภาพ พิกัด GPS วันเวลา และขนาดไฟล์ สวยงามพร้อมพิมพ์
               </p>
             </div>
           </div>
-        </div>
 
-        <!-- Option 3: Renamed Original Zip -->
-        <div id="optExportRenamed" class="p-4 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/50 rounded-xl cursor-pointer transition-all group">
-          <div class="flex items-start space-x-3">
-            <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
-              <i class="fa-solid fa-file-signature text-lg"></i>
+          <!-- Option 2: Excel (.xlsx) Embedded Photos -->
+          <div id="optExportExcel" class="p-3.5 border-2 border-slate-200 hover:border-emerald-600 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-excel text-base"></i>
             </div>
-            <div class="flex-1">
-              <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-sm">
-                2. เปลี่ยนชื่อไฟล์ตามพิกัดตรงรูป (Renamed Original Zip)
-              </h4>
-              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-                ดาวน์โหลดรูปภาพดั้งเดิมคุณภาพเต็ม 100% โดยเปลี่ยนชื่อไฟล์ให้ตรงกับพิกัด เช่น <code class="bg-slate-200 px-1 rounded">13.736717_100.523186_IMG001.jpg</code>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-emerald-700 text-xs">2. ไฟล์ Excel (.xlsx) ฝังรูป</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                ส่งออกเป็นไฟล์ Excel จริง โดยฝังรูปภาพลงในช่องตารางเซลล์คู่กับพิกัด
               </p>
             </div>
           </div>
+
+          <!-- Option 3: Standalone HTML Report -->
+          <div id="optExportHtml" class="p-3.5 border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-code text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-sky-600 text-xs">3. รายงานเว็บ HTML (Offline)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                บันทึกเป็นเว็บรายงานแผ่นเดียวพร้อมแผนที่และรูปฝังในตัว ทำซ้ำได้หลายรอบ เปิดดูแบบออฟไลน์ได้
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 4: GPS Stamp Zip -->
+          <div id="optExportStamped" class="p-3.5 border-2 border-slate-200 hover:border-amber-500 bg-slate-50 hover:bg-amber-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-stamp text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-amber-600 text-xs">4. รูปภาพสลักพิกัด (Zip)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                สลักพิกัด GPS และวันเวลาลงบนรูปภาพโดยตรง แล้วดาวน์โหลดรวมเป็นไฟล์ Zip
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 5: Renamed Zip -->
+          <div id="optExportRenamed" class="p-3.5 border-2 border-slate-200 hover:border-purple-600 bg-slate-50 hover:bg-purple-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-signature text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-purple-600 text-xs">5. เปลี่ยนชื่อไฟล์ตามพิกัด (Zip)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                ดาวน์โหลดภาพต้นฉบับโดยเปลี่ยนชื่อไฟล์ให้อ่านพิกัดตรงรูป เช่น `13.7367_100.5231_IMG.jpg`
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 6: Thai CSV -->
+          <div id="optExportCsv" class="p-3.5 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-csv text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-xs">6. ตารางข้อมูล CSV (ภาษาไทย)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                ไฟล์ CSV ภาษาไทย (UTF-8 BOM) นำไปเปิดใน Microsoft Excel ได้ทันที
+              </p>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -533,7 +582,6 @@
 
     const searchInput = document.getElementById('searchInput');
     const filterSelect = document.getElementById('filterSelect');
-    const btnExportCsv = document.getElementById('btnExportCsv');
     const btnOpenExportModal = document.getElementById('btnOpenExportModal');
     const btnFitMap = document.getElementById('btnFitMap');
     const btnClearAll = document.getElementById('btnClearAll');
@@ -541,8 +589,12 @@
     const exportModal = document.getElementById('exportModal');
     const btnCloseExportModal = document.getElementById('btnCloseExportModal');
     const btnCancelExportModal = document.getElementById('btnCancelExportModal');
+    const optExportPdf = document.getElementById('optExportPdf');
+    const optExportExcel = document.getElementById('optExportExcel');
+    const optExportHtml = document.getElementById('optExportHtml');
     const optExportStamped = document.getElementById('optExportStamped');
     const optExportRenamed = document.getElementById('optExportRenamed');
+    const optExportCsv = document.getElementById('optExportCsv');
 
     const tabBtnMap = document.getElementById('tabBtnMap');
     const tabBtnTable = document.getElementById('tabBtnTable');
@@ -712,11 +764,25 @@
       searchInput.addEventListener('input', renderDashboard);
       filterSelect.addEventListener('change', renderDashboard);
 
-      // Action Buttons
-      btnExportCsv.addEventListener('click', exportToCsv);
+      // Master Export Controls
       btnOpenExportModal.addEventListener('click', () => exportModal.classList.remove('hidden'));
       btnCloseExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
       btnCancelExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
+
+      optExportPdf.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportPdfReport();
+      });
+
+      optExportExcel.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportExcelWithImages();
+      });
+
+      optExportHtml.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportHtmlReport();
+      });
 
       optExportStamped.addEventListener('click', () => {
         exportModal.classList.add('hidden');
@@ -726,6 +792,11 @@
       optExportRenamed.addEventListener('click', () => {
         exportModal.classList.add('hidden');
         exportRenamedOriginalsZip();
+      });
+
+      optExportCsv.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportToCsv();
       });
 
       btnFitMap.addEventListener('click', fitMapToBounds);
@@ -1236,7 +1307,323 @@
       }
     }
 
-    // Export Mode 1: Zip of Stamped Images
+    // 📄 Export Option 1: PDF Photo Report Generator
+    async function exportPdfReport() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับสร้างรายงาน PDF', 'warning');
+        return;
+      }
+
+      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด...', 'info');
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+
+        // Header Title & Metadata
+        doc.setFontSize(16);
+        doc.setTextColor(2, 132, 199);
+        doc.text('GPS Photo EXIF Extraction Report', 14, 15);
+
+        doc.setFontSize(9);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Generated Date: ${formatDate(new Date())}   |   Total Photos: ${extractedItems.length}`, 14, 21);
+
+        const tableData = [];
+        for (let i = 0; i < extractedItems.length; i++) {
+          const item = extractedItems[i];
+          tableData.push([
+            '', // Image column placeholder
+            item.fileName,
+            item.hasGps ? `${item.lat}, ${item.lng}` : 'No GPS',
+            item.dateTakenFormatted,
+            item.fileSize
+          ]);
+        }
+
+        doc.autoTable({
+          startY: 25,
+          head: [['Photo', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
+          body: tableData,
+          theme: 'grid',
+          headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
+          bodyStyles: { fontSize: 8, minCellHeight: 16, verticalAlign: 'middle' },
+          columnStyles: {
+            0: { cellWidth: 20 },
+            1: { cellWidth: 50 },
+            2: { cellWidth: 45 },
+            3: { cellWidth: 45 },
+            4: { cellWidth: 20 }
+          },
+          didDrawCell: function(data) {
+            if (data.section === 'body' && data.column.index === 0) {
+              const item = extractedItems[data.row.index];
+              if (item && item.thumbnailUrl) {
+                try {
+                  const img = new Image();
+                  img.src = item.thumbnailUrl;
+                  doc.addImage(img, 'JPEG', data.cell.x + 2, data.cell.y + 1.5, 16, 13);
+                } catch(e) {}
+              }
+            }
+          }
+        });
+
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
+        doc.save(`GPS_Photo_Report_${timestamp}.pdf`);
+        showToast('ดาวน์โหลดรายงาน PDF เรียบร้อยแล้ว!', 'success');
+      } catch (err) {
+        console.error('PDF generation error:', err);
+        showToast('เกิดข้อผิดพลาดในการสร้าง PDF: ' + err.message, 'warning');
+      }
+    }
+
+    // 📊 Export Option 2: Excel (.xlsx) with Embedded Photos
+    async function exportExcelWithImages() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับส่งออก Excel', 'warning');
+        return;
+      }
+
+      if (!window.ExcelJS) {
+        showToast('กำลังโหลด ExcelJS... ลองใหม่อีกครั้งในครู่เดียว', 'warning');
+        return;
+      }
+
+      showToast('กำลังสร้างไฟล์ Excel (.xlsx) พร้อมฝังรูปภาพ...', 'info');
+
+      try {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('GPS Photo Data');
+
+        // Title Header Banner
+        worksheet.mergeCells('A1:G1');
+        const titleCell = worksheet.getCell('A1');
+        titleCell.value = 'รายงานข้อมูลรูปภาพและพิกัด GPS (GPS Photo EXIF Extraction Report)';
+        titleCell.font = { name: 'Prompt', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+        titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0284C7' } };
+        titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+        worksheet.getRow(1).height = 32;
+
+        // Table Column Headers
+        const headers = ['รูปภาพ (Photo)', 'ชื่อไฟล์ (File Name)', 'Latitude', 'Longitude', 'พิกัดรวม (Coordinates)', 'วันที่ถ่ายภาพ (Date Taken)', 'Google Maps Link'];
+        worksheet.addRow(headers);
+        const headerRow = worksheet.getRow(2);
+        headerRow.height = 24;
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+        headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+
+        worksheet.columns = [
+          { width: 16 }, // Photo
+          { width: 32 }, // File Name
+          { width: 14 }, // Lat
+          { width: 14 }, // Lng
+          { width: 28 }, // Full Coords
+          { width: 22 }, // Date
+          { width: 45 }  // Gmaps
+        ];
+
+        for (let i = 0; i < extractedItems.length; i++) {
+          const item = extractedItems[i];
+          const rowIndex = i + 3;
+
+          const row = worksheet.addRow([
+            '',
+            item.fileName,
+            item.lat || '',
+            item.lng || '',
+            item.fullCoords,
+            item.dateTakenFormatted,
+            item.googleMapsUrl
+          ]);
+          row.height = 52;
+          row.alignment = { vertical: 'middle' };
+
+          // Embed Image into Cell A[rowIndex]
+          if (item.thumbnailUrl) {
+            try {
+              const response = await fetch(item.thumbnailUrl);
+              const arrayBuffer = await response.arrayBuffer();
+              const imageId = workbook.addImage({
+                buffer: arrayBuffer,
+                extension: 'jpeg',
+              });
+
+              worksheet.addImage(imageId, {
+                tl: { col: 0, row: rowIndex - 1 },
+                ext: { width: 62, height: 50 },
+                editAs: 'oneCell'
+              });
+            } catch (imgErr) {
+              console.warn('Excel image embed error:', imgErr);
+            }
+          }
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `GPS_Photo_Report_${timestamp}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('ดาวน์โหลดไฟล์ Excel (.xlsx) ฝังรูปภาพเรียบร้อยแล้ว!', 'success');
+      } catch (excelErr) {
+        console.error('Excel generation error:', excelErr);
+        showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' + excelErr.message, 'warning');
+      }
+    }
+
+    // 🌐 Export Option 3: Standalone HTML Offline Report Generator
+    async function exportHtmlReport() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับสร้างรายงาน HTML', 'warning');
+        return;
+      }
+
+      showToast('กำลังสร้างไฟล์รายงานเว็บ (Standalone HTML Report)...', 'info');
+
+      try {
+        const itemsWithBase64 = [];
+        for (let i = 0; i < extractedItems.length; i++) {
+          const item = extractedItems[i];
+          let base64 = null;
+          if (item.thumbnailUrl) {
+            try {
+              const res = await fetch(item.thumbnailUrl);
+              const blob = await res.blob();
+              base64 = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onloadend = () => r(reader.result);
+                reader.readAsDataURL(blob);
+              });
+            } catch(e) {}
+          }
+          itemsWithBase64.push({
+            id: item.id,
+            fileName: item.fileName,
+            fileSize: item.fileSize,
+            dateTakenFormatted: item.dateTakenFormatted,
+            hasGps: item.hasGps,
+            lat: item.lat,
+            lng: item.lng,
+            fullCoords: item.fullCoords,
+            googleMapsUrl: item.googleMapsUrl,
+            base64
+          });
+        }
+
+        const nowStr = formatDate(new Date());
+
+        const htmlContent = `<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>รายงานพิกัด GPS รูปภาพ - ${nowStr}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>body { font-family: 'Prompt', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 text-slate-800 p-4 sm:p-8 max-w-7xl mx-auto space-y-6">
+  <header class="bg-slate-900 text-white p-6 rounded-2xl shadow-lg flex justify-between items-center">
+    <div>
+      <h1 class="text-xl font-bold text-sky-400"><i class="fa-solid fa-location-dot mr-2"></i>รายงานสรุปพิกัด GPS รูปภาพ</h1>
+      <p class="text-xs text-slate-400 mt-1">วันที่สร้างรายงาน: ${nowStr}   |   จำนวนรูปภาพรวม: ${extractedItems.length} รูป</p>
+    </div>
+    <button onclick="window.print()" class="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl">
+      <i class="fa-solid fa-print mr-1.5"></i>พิมพ์ / เซฟ PDF
+    </button>
+  </header>
+
+  <!-- Interactive Map -->
+  <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+    <div id="map" class="h-96 rounded-xl"></div>
+  </div>
+
+  <!-- Summary Table -->
+  <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+    <table class="w-full text-left text-xs border-collapse">
+      <thead class="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200">
+        <tr>
+          <th class="p-3">รูปภาพ</th>
+          <th class="p-3">ชื่อไฟล์</th>
+          <th class="p-3">พิกัด GPS</th>
+          <th class="p-3">วันที่ถ่ายภาพ</th>
+          <th class="p-3">ขนาดไฟล์</th>
+          <th class="p-3 text-right">Google Maps</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        ${itemsWithBase64.map(item => `
+          <tr class="hover:bg-sky-50/50 transition-colors">
+            <td class="p-3">
+              ${item.base64 ? `<img src="${item.base64}" class="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm">` : '-'}
+            </td>
+            <td class="p-3 font-semibold text-slate-800">${item.fileName}</td>
+            <td class="p-3 font-mono ${item.hasGps ? 'text-emerald-600 font-bold' : 'text-amber-600'}">
+              ${item.fullCoords}
+            </td>
+            <td class="p-3 text-slate-600">${item.dateTakenFormatted}</td>
+            <td class="p-3 text-slate-500">${item.fileSize}</td>
+            <td class="p-3 text-right">
+              ${item.hasGps ? `<a href="${item.googleMapsUrl}" target="_blank" class="px-2.5 py-1 bg-emerald-600 text-white rounded text-[11px] font-medium"><i class="fa-solid fa-map-location-dot mr-1"></i>เปิดดูแผนที่</a>` : '-'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const items = ${JSON.stringify(itemsWithBase64)};
+    const map = L.map('map').setView([13.736717, 100.523186], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+    const bounds = [];
+    items.forEach(item => {
+      if (item.hasGps) {
+        const marker = L.marker([item.lat, item.lng]).addTo(map);
+        marker.bindPopup(\`<b>\${item.fileName}</b><br>\${item.dateTakenFormatted}<br><span class="text-sky-600 font-mono">\${item.lat}, \${item.lng}</span>\`);
+        bounds.push([item.lat, item.lng]);
+      }
+    });
+    if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
+  <\/script>
+</body>
+</html>`;
+
+        const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `GPS_Photo_Report_${timestamp}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('ดาวน์โหลดรายงาน HTML แบบ Offline เรียบร้อยแล้ว!', 'success');
+      } catch (htmlErr) {
+        console.error('HTML report generation error:', htmlErr);
+        showToast('เกิดข้อผิดพลาดในการสร้างไฟล์รายงาน HTML', 'warning');
+      }
+    }
+
+    // Export Mode 4: Zip of Stamped Images
     async function exportStampedImagesZip() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
@@ -1289,7 +1676,7 @@
       showToast(`ดาวน์โหลด Zip รูปสลักพิกัดเรียบร้อยแล้ว (${extractedItems.length} รูป)!`, 'success');
     }
 
-    // Export Mode 3: Zip of Renamed Original Images
+    // Export Mode 5: Zip of Renamed Original Images
     async function exportRenamedOriginalsZip() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
