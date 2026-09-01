@@ -1473,7 +1473,7 @@
       });
     }
 
-    // 🗺️ Export Option 1: KMZ Google Earth Generator (Photos Embedded inside Pins)
+    // 🗺️ Export Option 1: KMZ Generator (Compatible with Google My Maps & Google Earth)
     async function exportKmzFile() {
       if (extractedItems.length === 0) {
         showToast('ไม่มีข้อมูลสำหรับส่งออก KMZ', 'warning');
@@ -1491,39 +1491,35 @@
         return;
       }
 
-      showToast('กำลังสร้างไฟล์ KMZ สำหรับ Google Earth (ประมวลผลเซฟหน่วยความจำ)...', 'info');
-
       progressContainer.classList.remove('hidden');
       updateProgress(0, gpsItems.length, gpsItems.length);
-      progressStatusText.innerText = 'กำลังประมวลผลหมุดและฝังรูปภาพลงในไฟล์ KMZ...';
+      progressStatusText.innerText = 'กำลังจัดเตรียมไฟล์ KMZ สำหรับ Google My Maps & Google Earth...';
 
-      const zip = new JSZip();
+      try {
+        const zip = new JSZip();
 
-      let kmlPlacemarks = '';
-      for (let i = 0; i < gpsItems.length; i++) {
-        const item = gpsItems[i];
-        const safeFileName = item.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const imagePathInZip = `images/img_${i}_${safeFileName}`;
+        let kmlPlacemarks = '';
+        for (let i = 0; i < gpsItems.length; i++) {
+          const item = gpsItems[i];
+          const safeFileName = item.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const imagePathInZip = `images/img_${i}_${safeFileName}.jpg`;
 
-        // 📱 Mobile Memory Safety: Get compressed base64 to avoid OOM crash on mobile
-        let base64Img = await getResizedBase64(item, 800, 0.75);
+          // Compress/downscale photo to 650px JPEG (quality 0.70) under 50KB to keep KMZ lightweight under 5MB for Google My Maps quota
+          let resizedBase64 = await getResizedBase64(item, 650, 0.70);
 
-        try {
-          if (item.file) {
-            zip.file(imagePathInZip, item.file);
-          } else if (item.thumbnailUrl) {
-            const res = await fetch(item.thumbnailUrl);
-            const blob = await res.blob();
-            zip.file(imagePathInZip, blob);
+          try {
+            if (resizedBase64) {
+              const rawBase64 = resizedBase64.replace(/^data:image\/\w+;base64,/, '');
+              zip.file(imagePathInZip, rawBase64, { base64: true });
+            } else if (item.file) {
+              zip.file(imagePathInZip, item.file);
+            }
+          } catch(e) {
+            console.warn('Error adding image to KMZ:', item.fileName, e);
           }
-        } catch(e) {
-          console.warn('Error adding image to KMZ:', item.fileName, e);
-        }
 
-        const imgSource = base64Img || imagePathInZip;
-
-        // Generate KML Placemark XML (Note: KML uses Longitude,Latitude order!)
-        kmlPlacemarks += `
+          // Use clean relative path "images/..." (Google My Maps requires relative paths instead of Base64 URIs!)
+          kmlPlacemarks += `
     <Placemark>
       <name>${escapeXml(item.fileName)}</name>
       <description><![CDATA[
@@ -1533,7 +1529,7 @@
           <p style="margin: 4px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
           <p style="margin: 4px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
           <div style="margin-top: 10px; text-align: center;">
-            <img src="${imgSource}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
+            <img src="${imagePathInZip}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1;" />
           </div>
           <p style="margin-top: 10px; text-align: right;">
             <a href="${item.googleMapsUrl}" target="_blank" style="color: #059669; text-decoration: none; font-weight: bold;">เปิดใน Google Maps &#8599;</a>
@@ -1546,11 +1542,11 @@
       </Point>
     </Placemark>`;
 
-        updateProgress(i + 1, gpsItems.length, gpsItems.length);
-        if (i % 2 === 0) await new Promise(r => setTimeout(r, 15));
-      }
+          updateProgress(i + 1, gpsItems.length, gpsItems.length);
+          if (i % 3 === 0) await new Promise(r => setTimeout(r, 10));
+        }
 
-      const kmlDocument = `<?xml version="1.0" encoding="UTF-8"?>
+        const kmlDocument = `<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>GPS Photo Coordinates &amp; Photos</name>
@@ -1567,25 +1563,34 @@
   </Document>
 </kml>`;
 
-      zip.file('doc.kml', kmlDocument);
+        zip.file('doc.kml', kmlDocument);
 
-      progressStatusText.innerText = 'กำลังบีบอัดไฟล์ KMZ...';
-      const kmzBlob = await zip.generateAsync({ type: 'blob' });
+        progressStatusText.innerText = 'กำลังบีบอัดไฟล์ KMZ...';
+        const kmzBlob = await zip.generateAsync({
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
 
-      const now = new Date();
-      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-      
-      const url = URL.createObjectURL(kmzBlob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `GPS_Photos_GoogleEarth_${timestamp}.kmz`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+        const now = new Date();
+        const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+        
+        const url = URL.createObjectURL(kmzBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `GPS_Photos_${timestamp}.kmz`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
-      progressContainer.classList.add('hidden');
-      showToast(`ดาวน์โหลดไฟล์ KMZ เรียบร้อยแล้ว (${gpsItems.length} หมุดพร้อมรูปภาพ)!`, 'success');
+        progressContainer.classList.add('hidden');
+        showToast(`ดาวน์โหลดไฟล์ KMZ เรียบร้อยแล้ว (รองรับทั้ง Google My Maps และ Google Earth)!`, 'success');
+      } catch(err) {
+        console.error('Error generating KMZ:', err);
+        progressContainer.classList.add('hidden');
+        showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ KMZ', 'error');
+      }
     }
 
     // 📍 Export Option 2: KML Generator (Coordinates & Details Text Only, No Embedded Images)
