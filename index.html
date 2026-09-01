@@ -418,6 +418,19 @@
             </div>
           </div>
 
+          <!-- Option 3: Google My Maps CSV Import -->
+          <div id="optExportMyMaps" class="p-3.5 border-2 border-slate-200 hover:border-blue-600 bg-slate-50 hover:bg-blue-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-map-pin text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-blue-600 text-xs">3. ไฟล์สำหรับ Google My Maps 🗺️</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                ไฟล์นำเข้าสำหรับ Google My Maps โดยเฉพาะ (ไม่มีรูปฝัง ไร้ผสานเซลล์ นำเข้าปักหมุดผ่าน 100%)
+              </p>
+            </div>
+          </div>
+
           <!-- Option 3: Standalone HTML Report -->
           <div id="optExportHtml" class="p-3.5 border-2 border-slate-200 hover:border-sky-500 bg-slate-50 hover:bg-sky-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -591,6 +604,7 @@
     const btnCancelExportModal = document.getElementById('btnCancelExportModal');
     const optExportPdf = document.getElementById('optExportPdf');
     const optExportExcel = document.getElementById('optExportExcel');
+    const optExportMyMaps = document.getElementById('optExportMyMaps');
     const optExportHtml = document.getElementById('optExportHtml');
     const optExportStamped = document.getElementById('optExportStamped');
     const optExportRenamed = document.getElementById('optExportRenamed');
@@ -777,6 +791,11 @@
       optExportExcel.addEventListener('click', () => {
         exportModal.classList.add('hidden');
         exportExcelWithImages();
+      });
+
+      optExportMyMaps.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportGoogleMyMaps();
       });
 
       optExportHtml.addEventListener('click', () => {
@@ -1480,6 +1499,51 @@
         console.error('Excel generation error:', excelErr);
         showToast('เกิดข้อผิดพลาดในการสร้างไฟล์ Excel: ' + excelErr.message, 'warning');
       }
+    }
+
+    // 🗺️ Export Option 3: Google My Maps Clean CSV Export
+    function exportGoogleMyMaps() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับส่งออก Google My Maps', 'warning');
+        return;
+      }
+
+      const gpsItems = extractedItems.filter(i => i.hasGps);
+      if (gpsItems.length === 0) {
+        showToast('ไม่พบรูปภาพที่มีพิกัด GPS สำหรับนำเข้า Google My Maps', 'warning');
+        return;
+      }
+
+      const headers = ['Name', 'Latitude', 'Longitude', 'Date', 'File_Size', 'Google_Maps_Link'];
+      
+      const rows = gpsItems.map(item => {
+        return [
+          `"${item.fileName.replace(/"/g, '""')}"`,
+          item.lat,
+          item.lng,
+          `"${item.dateTakenFormatted}"`,
+          `"${item.fileSize}"`,
+          `"${item.googleMapsUrl}"`
+        ];
+      });
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Google_MyMaps_Import_${timestamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast(`ส่งออกไฟล์สำหรับ Google My Maps เรียบร้อยแล้ว (${gpsItems.length} หมุด)!`, 'success');
     }
 
     // 🌐 Export Option 3: Standalone HTML Offline Report Generator
