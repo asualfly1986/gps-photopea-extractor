@@ -1255,6 +1255,115 @@
       };
       reader.readAsText(file);
     }
+
+    // Helper: Clean file name by stripping any lat_lng_ or NoGPS_ coordinate prefixes
+    function getCleanFileName(fileName) {
+      if (!fileName) return '';
+      return String(fileName)
+        .replace(/^STAMPED_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
+        .replace(/^STAMP_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
+        .replace(/^(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '');
+    }
+
+    // Process a single image file for EXIF and Thumbnail
+    async function processSingleFile(file) {
+      const id = 'img_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isHeic = (ext === 'heic' || ext === 'heif');
+      const cleanFileName = getCleanFileName(file.name);
+
+      let lat = null;
+      let lng = null;
+      let dateTaken = null;
+      let hasGps = false;
+      let thumbnailUrl = null;
+
+      // 1. Extract EXIF via exifr library
+      try {
+        if (window.exifr) {
+          let gpsData = await exifr.gps(file);
+          if (!gpsData || typeof gpsData.latitude !== 'number') {
+            const parsed = await exifr.parse(file, { gps: true, tiff: true, xmp: true, rev: true });
+            if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+              gpsData = { latitude: parsed.latitude, longitude: parsed.longitude };
+            }
+          }
+
+          if (gpsData && typeof gpsData.latitude === 'number' && typeof gpsData.longitude === 'number') {
+            lat = Number(gpsData.latitude.toFixed(6));
+            lng = Number(gpsData.longitude.toFixed(6));
+            hasGps = true;
+          }
+
+          const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
+          if (exifData) {
+            dateTaken = exifData.DateTimeOriginal || exifData.CreateDate || exifData.ModifyDate || file.lastModifiedDate;
+          }
+        }
+      } catch (exifErr) {
+        console.warn('EXIF parsing failed for:', file.name, exifErr);
+      }
+
+      if (!dateTaken) {
+        dateTaken = file.lastModified ? new Date(file.lastModified) : new Date();
+      }
+
+      // 2. Generate Thumbnail URL
+      if (isHeic) {
+        try {
+          if (window.heic2any) {
+            const convertedBlob = await heic2any({
+              blob: file,
+              toType: 'image/jpeg',
+              quality: 0.4
+            });
+            const blobObj = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+            thumbnailUrl = URL.createObjectURL(blobObj);
+          } else {
+            thumbnailUrl = null;
+          }
+        } catch (heicErr) {
+          console.warn('HEIC preview conversion failed:', file.name);
+          thumbnailUrl = null;
+        }
+      } else {
+        thumbnailUrl = URL.createObjectURL(file);
+      }
+
+      const formattedDate = formatDate(dateTaken);
+      const fullCoords = hasGps ? `${lat}, ${lng}` : 'ไม่มีข้อมูล GPS';
+      const googleMapsUrl = hasGps ? `https://www.google.com/maps?q=${lat},${lng}` : '#';
+
+      return {
+        id,
+        file,
+        fileName: cleanFileName,
+        rawFileName: file.name,
+        fileSize: formatBytes(file.size),
+        fileSizeBytes: file.size,
+        thumbnailUrl,
+        isHeic,
+        hasGps,
+        lat,
+        lng,
+        fullCoords,
+        dateTakenFormatted: formattedDate,
+        googleMapsUrl,
+        status: 'pending',
+        vehicle: 'คนปีนตัด'
+      };
+    }
+
+    // Update Progress Bar UI
+    function updateProgress(current, total, gpsCount) {
+      const percent = Math.round((current / total) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressPercentText.innerText = `${percent}%`;
+      progressStatusText.innerText = `กำลังสแกนรูปภาพ (${current} / ${total})...`;
+      progressCountText.innerText = `สแกนไปแล้ว ${current} จาก ${total} รูป`;
+      progressGpsCountText.innerHTML = `<i class="fa-solid fa-location-dot mr-1"></i>พบพิกัด: ${gpsCount} รูป`;
+    }
+
     function renderDashboard() {
       const query = searchInput.value.trim().toLowerCase();
       const filter = filterSelect.value;
