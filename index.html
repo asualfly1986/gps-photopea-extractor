@@ -1816,11 +1816,13 @@
 
         doc.autoTable({
           startY: 25,
+          margin: { top: 25, bottom: 24, left: 14, right: 14 },
+          rowPageBreak: 'avoid',
           head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 8, minCellHeight: 24, verticalAlign: 'middle' },
+          bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
             0: { cellWidth: 26 }, // Photo column width
             1: { cellWidth: 46 },
@@ -1832,7 +1834,7 @@
             if (data.section === 'head' && data.column.index === 0) {
               try {
                 // Render crisp Thai "รูปภาพ" header in cell
-                doc.addImage(headerDataUrl, 'PNG', data.cell.x + 1, data.cell.y + 1, 24, 7);
+                doc.addImage(headerDataUrl, 'PNG', data.cell.x + 1, data.cell.y + 1, 24, 6);
               } catch(e) {}
             }
 
@@ -1842,8 +1844,8 @@
 
               if (imgObj && imgObj.dataUrl) {
                 try {
-                  const maxW = 22; // 22mm max width inside 26mm cell
-                  const maxH = 22; // 22mm max height inside 24mm cell
+                  const maxW = 20; // 20mm max width inside 26mm cell (3mm padding left/right)
+                  const maxH = 20; // 20mm max height inside 22mm cell (1mm padding top/bottom)
                   
                   let drawW = maxW;
                   let drawH = maxH;
