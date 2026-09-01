@@ -865,7 +865,14 @@
       // 1. Extract EXIF via exifr library
       try {
         if (window.exifr) {
-          const gpsData = await exifr.gps(file);
+          let gpsData = await exifr.gps(file);
+          if (!gpsData || typeof gpsData.latitude !== 'number') {
+            const parsed = await exifr.parse(file, { gps: true, tiff: true, xmp: true, rev: true });
+            if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
+              gpsData = { latitude: parsed.latitude, longitude: parsed.longitude };
+            }
+          }
+
           if (gpsData && typeof gpsData.latitude === 'number' && typeof gpsData.longitude === 'number') {
             lat = Number(gpsData.latitude.toFixed(6));
             lng = Number(gpsData.longitude.toFixed(6));
