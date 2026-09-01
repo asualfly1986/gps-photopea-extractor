@@ -1392,18 +1392,30 @@
         const safeFileName = item.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
         const imagePathInZip = `images/img_${i}_${safeFileName}`;
 
-        // Add image file to ZIP
+        let base64Img = '';
         try {
           if (item.file) {
             zip.file(imagePathInZip, item.file);
+            base64Img = await new Promise(r => {
+              const reader = new FileReader();
+              reader.onloadend = () => r(reader.result);
+              reader.readAsDataURL(item.file);
+            });
           } else if (item.thumbnailUrl) {
             const res = await fetch(item.thumbnailUrl);
             const blob = await res.blob();
             zip.file(imagePathInZip, blob);
+            base64Img = await new Promise(r => {
+              const reader = new FileReader();
+              reader.onloadend = () => r(reader.result);
+              reader.readAsDataURL(blob);
+            });
           }
         } catch(e) {
           console.warn('Error adding image to KMZ:', item.fileName, e);
         }
+
+        const imgSource = base64Img || imagePathInZip;
 
         // Generate KML Placemark XML (Note: KML uses Longitude,Latitude order!)
         kmlPlacemarks += `
@@ -1416,7 +1428,7 @@
           <p style="margin: 4px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
           <p style="margin: 4px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
           <div style="margin-top: 10px; text-align: center;">
-            <img src="${imagePathInZip}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
+            <img src="${imgSource}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />
           </div>
           <p style="margin-top: 10px; text-align: right;">
             <a href="${item.googleMapsUrl}" target="_blank" style="color: #059669; text-decoration: none; font-weight: bold;">เปิดใน Google Maps &#8599;</a>
