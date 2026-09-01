@@ -295,12 +295,25 @@
         
         <!-- Left Column: Map Container -->
         <div id="mapPanel" class="lg:col-span-6 xl:col-span-7 flex flex-col space-y-2">
-          <div class="flex items-center justify-between px-1">
+          <div class="flex flex-wrap items-center justify-between gap-2 px-1">
             <h3 class="text-base font-bold text-slate-800 flex items-center">
               <i class="fa-solid fa-map-location-dot text-brand-600 mr-2"></i>
-              แผนที่แสดงตำแหน่งรูปภาพ (Interactive Map)
+              แผนที่แสดงตำแหน่งรูปภาพ
             </h3>
-            <span class="text-xs text-slate-500">คลิกที่หมุดเพื่อดูรายละเอียด</span>
+
+            <!-- Map Controls (Layer Switcher + Current Location) -->
+            <div class="flex items-center space-x-2">
+              <select id="mapLayerSelect" class="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg py-1 px-2 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-medium">
+                <option value="osm">🗺️ แผนที่ถนน (Street)</option>
+                <option value="satellite">🛰️ ภาพดาวเทียม (Satellite)</option>
+                <option value="light">☀️ แผนที่สว่าง (Light)</option>
+              </select>
+
+              <button id="btnLocateUser" class="inline-flex items-center px-2.5 py-1 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg text-xs font-semibold shadow-sm transition-all cursor-pointer" title="ค้นหาตำแหน่งปัจจุบันของคุณ">
+                <i class="fa-solid fa-location-crosshairs mr-1.5"></i>
+                <span>พิกัดปัจจุบัน</span>
+              </button>
+            </div>
           </div>
           
           <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden relative">
@@ -413,12 +426,20 @@
     let markersGroup = null;
     let activeModalItem = null;
 
+    // Map State
+    let currentTileLayer = null;
+    let userLocationMarker = null;
+    let userLocationCircle = null;
+
     // DOM Elements
     const fileInput = document.getElementById('fileInput');
     const folderInput = document.getElementById('folderInput');
     const btnSelectFiles = document.getElementById('btnSelectFiles');
     const btnSelectFolder = document.getElementById('btnSelectFolder');
     const dropzone = document.getElementById('dropzone');
+
+    const mapLayerSelect = document.getElementById('mapLayerSelect');
+    const btnLocateUser = document.getElementById('btnLocateUser');
 
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
@@ -456,6 +477,27 @@
     const modalGmapsBtn = document.getElementById('modalGmapsBtn');
     const modalLocateBtn = document.getElementById('modalLocateBtn');
 
+    // Tile Layer Providers
+    const tileProviders = {
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }),
+      satellite: L.layerGroup([
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19,
+          attribution: '&copy; Esri World Imagery'
+        }),
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+          maxZoom: 19
+        })
+      ]),
+      light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+      })
+    };
+
     // Initialize Application
     document.addEventListener('DOMContentLoaded', () => {
       initMap();
@@ -469,12 +511,76 @@
         attributionControl: true
       }).setView([13.736717, 100.523186], 6);
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-      }).addTo(map);
-
+      switchMapTileLayer('osm');
       markersGroup = L.layerGroup().addTo(map);
+    }
+
+    // Switch Map Tile Layer
+    function switchMapTileLayer(providerKey) {
+      if (currentTileLayer) {
+        map.removeLayer(currentTileLayer);
+      }
+      currentTileLayer = tileProviders[providerKey] || tileProviders.osm;
+      currentTileLayer.addTo(map);
+    }
+
+    // Locate Current User Geolocation
+    function locateCurrentUser() {
+      if (!navigator.geolocation) {
+        showToast('เบราว์เซอร์ของคุณไม่รองรับการดึงพิกัดตำแหน่ง GPS', 'warning');
+        return;
+      }
+
+      showToast('กำลังค้นหาตำแหน่งปัจจุบันของคุณ...', 'info');
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const accuracy = position.coords.accuracy;
+
+          if (userLocationMarker) map.removeLayer(userLocationMarker);
+          if (userLocationCircle) map.removeLayer(userLocationCircle);
+
+          const userIcon = L.divIcon({
+            className: 'custom-user-location-marker',
+            html: `
+              <div class="relative">
+                <div class="w-5 h-5 rounded-full bg-blue-600 border-2 border-white shadow-lg"></div>
+                <div class="absolute -inset-2 rounded-full bg-blue-500/40 animate-ping"></div>
+              </div>
+            `,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+
+          userLocationMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+          userLocationMarker.bindPopup(`
+            <div class="p-2 text-xs space-y-1">
+              <p class="font-bold text-slate-800 flex items-center"><i class="fa-solid fa-location-crosshairs text-blue-600 mr-1.5"></i>ตำแหน่งปัจจุบันของคุณ</p>
+              <p class="font-mono text-brand-600 font-semibold">${lat.toFixed(6)}, ${lng.toFixed(6)}</p>
+              <p class="text-[10px] text-slate-400">ความแม่นยำประมาณ ${Math.round(accuracy)} เมตร</p>
+              <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener" class="inline-block text-[11px] text-emerald-600 hover:underline pt-0.5">เปิดใน Google Maps</a>
+            </div>
+          `).openPopup();
+
+          userLocationCircle = L.circle([lat, lng], {
+            radius: accuracy,
+            color: '#2563eb',
+            fillColor: '#3b82f6',
+            fillOpacity: 0.15,
+            weight: 1
+          }).addTo(map);
+
+          map.flyTo([lat, lng], 16, { duration: 1.5 });
+          showToast(`พบตำแหน่งปัจจุบันของคุณแล้ว: ${lat.toFixed(5)}, ${lng.toFixed(5)}`, 'success');
+        },
+        (err) => {
+          console.warn('Geolocation error:', err);
+          showToast('ไม่สามารถระบุตำแหน่งปัจจุบันได้ (โปรดอนุญาตสิทธิ์ Location/GPS)', 'warning');
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
     }
 
     // Event Listeners Setup
@@ -483,6 +589,10 @@
       btnSelectFiles.addEventListener('click', () => fileInput.click());
       btnSelectFolder.addEventListener('click', () => folderInput.click());
       dropzone.addEventListener('click', () => fileInput.click());
+
+      // Map Controls
+      mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
+      btnLocateUser.addEventListener('click', locateCurrentUser);
 
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
