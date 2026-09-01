@@ -1840,24 +1840,29 @@
             console.warn('Error adding image to KMZ:', item.fileName, e);
           }
 
-          // Clean KML Placemark with embedded photo tag (<img src="files/img_x.jpg">) for Google Earth & GIS
+          // Clean KML Placemark with embedded Data URI photo and crisp white card for Google Earth Web & Desktop
+          const imgSrc = resizedBase64 || imagePathInZip;
+          const isDone = item.status === 'completed';
+
           kmlPlacemarks += `
     <Placemark>
       <name>${escapeXml(item.fileName)}</name>
       <description><![CDATA[
-        <div style="font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5; max-width: 320px;">
-          <div style="margin-bottom: 8px; text-align: center; background-color: #f1f5f9; border-radius: 8px; overflow: hidden; border: 1px solid #cbd5e1;">
-            <img src="${imagePathInZip}" style="max-width: 100%; max-height: 240px; display: block; margin: 0 auto; border-radius: 6px;" alt="Photo" />
+        <div style="font-family: Arial, sans-serif; font-size: 13px; color: #0f172a; background-color: #ffffff; padding: 12px; border-radius: 12px; border: 1px solid #cbd5e1; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 290px; max-width: 100%;">
+          <div style="margin-bottom: 10px; text-align: center; background-color: #0f172a; border-radius: 8px; overflow: hidden; padding: 4px;">
+            <img src="${imgSrc}" style="max-width: 100%; max-height: 220px; object-fit: contain; display: block; margin: 0 auto; border-radius: 6px;" alt="Photo" />
           </div>
-          <h3 style="margin-top: 0; color: #0284c7; font-size: 15px; margin-bottom: 6px;">${escapeXml(item.fileName)}</h3>
-          <p style="margin: 3px 0;"><b>พิกัด GPS:</b> ${item.lat}, ${item.lng}</p>
-          <p style="margin: 3px 0;"><b>สถานะ:</b> ${item.status === 'completed' ? '<span style="color: #059669; font-weight: bold;">แล้วเสร็จ</span>' : '<span style="color: #e11d48; font-weight: bold;">รอแก้ไข</span>'}</p>
-          <p style="margin: 3px 0;"><b>พาหนะ:</b> ${escapeXml(item.vehicle || 'คนปีนตัด')}</p>
-          <p style="margin: 3px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
-          <p style="margin: 3px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
-          <p style="margin-top: 10px;">
-            <a href="${item.googleMapsUrl}" target="_blank" style="display: inline-block; padding: 6px 14px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;">เปิดดูพิกัดบน Google Maps &#8599;</a>
-          </p>
+          <h3 style="margin: 0 0 8px 0; color: #0284c7; font-size: 15px; font-weight: bold; word-break: break-all;">${escapeXml(item.fileName)}</h3>
+          <div style="font-size: 12px; color: #334155; line-height: 1.6;">
+            <p style="margin: 4px 0;"><b>พิกัด GPS:</b> <span style="font-family: monospace; color: #0284c7; font-weight: bold;">${item.lat}, ${item.lng}</span></p>
+            <p style="margin: 4px 0;"><b>สถานะ:</b> ${isDone ? '<span style="color: #047857; font-weight: bold; background-color: #ecfdf5; padding: 2px 8px; border-radius: 4px; border: 1px solid #a7f3d0;">แล้วเสร็จ</span>' : '<span style="color: #be123c; font-weight: bold; background-color: #fff1f2; padding: 2px 8px; border-radius: 4px; border: 1px solid #fecdd3;">รอแก้ไข</span>'}</p>
+            <p style="margin: 4px 0;"><b>พาหนะ:</b> <span style="color: #334155; font-weight: bold; background-color: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">${escapeXml(item.vehicle || 'คนปีนตัด')}</span></p>
+            <p style="margin: 4px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
+            <p style="margin: 4px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
+          </div>
+          <div style="margin-top: 12px; text-align: center;">
+            <a href="${item.googleMapsUrl}" target="_blank" style="display: block; padding: 8px 12px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 12px;">เปิดพิกัดใน Google Maps &#8599;</a>
+          </div>
         </div>
       ]]></description>
       <styleUrl>#photo-marker-style</styleUrl>
