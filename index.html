@@ -140,27 +140,27 @@
         <!-- Right Upload Buttons -->
         <div class="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
           <!-- Multi Files Button -->
-          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer">
+          <label for="fileInput" id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer select-none">
             <i class="fa-solid fa-images mr-2 text-lg"></i>
             <span>เลือกรูปภาพทั้งหมด</span>
-          </button>
+          </label>
           
           <!-- Folder Upload Button -->
-          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-semibold shadow-md shadow-slate-900/10 transition-all cursor-pointer">
+          <label for="folderInput" id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-semibold shadow-md shadow-slate-900/10 transition-all cursor-pointer select-none">
             <i class="fa-solid fa-folder-open mr-2 text-lg text-amber-400"></i>
             <span>เลือกทั้งโฟลเดอร์</span>
-          </button>
+          </label>
 
           <!-- Load Project JSON Button -->
-          <button id="btnLoadProject" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer" title="นำเข้าไฟล์โปรเจกต์เดิม (.json)">
+          <label for="projectInput" id="btnLoadProject" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer select-none" title="นำเข้าไฟล์โปรเจกต์เดิม (.json)">
             <i class="fa-solid fa-file-import mr-2 text-lg"></i>
             <span>นำเข้าโปรเจกต์ (.json)</span>
-          </button>
+          </label>
         </div>
       </div>
 
       <!-- Drag & Drop Zone -->
-      <div id="dropzone" class="mt-6 border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50/50 hover:bg-sky-50/40 rounded-2xl p-8 text-center transition-all cursor-pointer group">
+      <label for="fileInput" id="dropzone" class="block mt-6 border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50/50 hover:bg-sky-50/40 rounded-2xl p-8 text-center transition-all cursor-pointer group select-none">
         <div class="flex flex-col items-center justify-center space-y-3">
           <div class="w-16 h-16 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-brand-600 group-hover:scale-110 transition-transform">
             <i class="fa-solid fa-cloud-arrow-up text-2xl group-hover:text-brand-500"></i>
@@ -179,7 +179,7 @@
             <span>รองรับมือถือ Android & iOS</span>
           </div>
         </div>
-      </div>
+      </label>
 
       <!-- Hidden Inputs -->
       <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff" class="hidden">
@@ -817,31 +817,6 @@
 
     // Event Listeners Setup
     function setupEventListeners() {
-      // Button Triggers for File Input
-      btnSelectFiles.addEventListener('click', (e) => {
-        e.preventDefault();
-        fileInput.value = '';
-        fileInput.click();
-      });
-
-      btnSelectFolder.addEventListener('click', (e) => {
-        e.preventDefault();
-        folderInput.value = '';
-        folderInput.click();
-      });
-
-      btnLoadProject.addEventListener('click', (e) => {
-        e.preventDefault();
-        projectInput.value = '';
-        projectInput.click();
-      });
-
-      dropzone.addEventListener('click', (e) => {
-        if (e.target.closest('button')) return;
-        fileInput.value = '';
-        fileInput.click();
-      });
-
       // Map Controls
       mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
       btnLocateUser.addEventListener('click', locateCurrentUser);
