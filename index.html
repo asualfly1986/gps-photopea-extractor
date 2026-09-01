@@ -21,6 +21,9 @@
   <!-- HEIC Converter (heic2any) -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
+  <!-- JSZip for Zip Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
   <!-- Google Fonts: Prompt & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,7 +94,7 @@
           <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-sky-100 to-sky-300">
             GPS Photo EXIF Extractor
           </h1>
-          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export CSV (Client-side 100%)</p>
+          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export CSV/รูปภาพประทับตรา (Client-side 100%)</p>
         </div>
       </div>
       
@@ -259,19 +262,25 @@
         <!-- Action Buttons -->
         <div class="flex flex-wrap items-center justify-end gap-2.5 w-full md:w-auto">
           <!-- Export CSV -->
-          <button id="btnExportCsv" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer">
-            <i class="fa-solid fa-file-excel mr-2 text-base"></i>
-            <span>Export CSV (ภาษาไทย)</span>
+          <button id="btnExportCsv" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+            <i class="fa-solid fa-file-excel mr-1.5 text-sm"></i>
+            <span>Export CSV</span>
+          </button>
+
+          <!-- Export Stamped Images / Zip -->
+          <button id="btnOpenExportModal" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-3.5 py-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+            <i class="fa-solid fa-file-zipper mr-1.5 text-sm"></i>
+            <span>ดาวน์โหลดรูปภาพ (Zip)</span>
           </button>
 
           <!-- Fit Map Bounds -->
-          <button id="btnFitMap" class="inline-flex items-center justify-center px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-sm font-medium rounded-lg transition-all cursor-pointer" title="ปรับมุมมองแผนที่ให้ครอบคลุมทุกหมุด">
+          <button id="btnFitMap" class="inline-flex items-center justify-center px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-medium rounded-lg transition-all cursor-pointer" title="ปรับมุมมองแผนที่ให้ครอบคลุมทุกหมุด">
             <i class="fa-solid fa-expand mr-1.5"></i>
             <span class="hidden sm:inline">โฟกัสแผนที่</span>
           </button>
 
           <!-- Clear All -->
-          <button id="btnClearAll" class="inline-flex items-center justify-center px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-sm font-medium rounded-lg transition-all cursor-pointer" title="ล้างข้อมูลทั้งหมด">
+          <button id="btnClearAll" class="inline-flex items-center justify-center px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-medium rounded-lg transition-all cursor-pointer" title="ล้างข้อมูลทั้งหมด">
             <i class="fa-solid fa-trash-can mr-1.5"></i>
             <span class="hidden sm:inline">ล้างข้อมูล</span>
           </button>
@@ -362,6 +371,68 @@
 
   </main>
 
+  <!-- Export Options Modal -->
+  <div id="exportModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+      <!-- Modal Header -->
+      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-file-zipper text-brand-400 text-lg"></i>
+          <h3 class="text-sm font-bold">ส่งออกดาวน์โหลดไฟล์รูปภาพ (Export Options)</h3>
+        </div>
+        <button id="btnCloseExportModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 text-xs text-slate-600">
+        <p class="text-slate-700 font-medium">โปรดเลือกรูปแบบการส่งออกไฟล์รูปภาพที่คุณต้องการดาวน์โหลด:</p>
+
+        <!-- Option 1: GPS Stamp Zip -->
+        <div id="optExportStamped" class="p-4 border-2 border-slate-200 hover:border-brand-500 bg-slate-50 hover:bg-sky-50/50 rounded-xl cursor-pointer transition-all group">
+          <div class="flex items-start space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-brand-500 text-white flex items-center justify-center shrink-0 shadow-md">
+              <i class="fa-solid fa-stamp text-lg"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-slate-800 group-hover:text-brand-600 text-sm">
+                1. รูปภาพสลักประทับพิกัด GPS (GPS Stamp Zip)
+              </h4>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                สลักพิกัด GPS (`Latitude, Longitude`), วันเวลาถ่ายภาพ ลงบนแถบด้านล่างของรูปภาพโดยตรง รวมเป็นไฟล์ `.ZIP` (เหมาะสำหรับทำรายงาน / ส่งมอบงาน)
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option 3: Renamed Original Zip -->
+        <div id="optExportRenamed" class="p-4 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/50 rounded-xl cursor-pointer transition-all group">
+          <div class="flex items-start space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-md">
+              <i class="fa-solid fa-file-signature text-lg"></i>
+            </div>
+            <div class="flex-1">
+              <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-sm">
+                2. เปลี่ยนชื่อไฟล์ตามพิกัดตรงรูป (Renamed Original Zip)
+              </h4>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                ดาวน์โหลดรูปภาพดั้งเดิมคุณภาพเต็ม 100% โดยเปลี่ยนชื่อไฟล์ให้ตรงกับพิกัด เช่น <code class="bg-slate-200 px-1 rounded">13.736717_100.523186_IMG001.jpg</code>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+        <button id="btnCancelExportModal" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium transition-colors">
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Image Preview Modal -->
   <div id="imageModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -397,14 +468,21 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-        <a id="modalGmapsBtn" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors">
-          <i class="fa-solid fa-map-location-dot mr-1.5"></i>
-          เปิดดูบน Google Maps
-        </a>
-        <button id="modalLocateBtn" class="inline-flex items-center px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
-          <i class="fa-solid fa-crosshairs mr-1.5"></i>
-          ซูมไปยังตำแหน่งในแผนที่
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center space-x-2">
+          <a id="modalGmapsBtn" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors">
+            <i class="fa-solid fa-map-location-dot mr-1.5"></i>
+            เปิดบน Google Maps
+          </a>
+          <button id="modalLocateBtn" class="inline-flex items-center px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
+            <i class="fa-solid fa-crosshairs mr-1.5"></i>
+            ซูมแผนที่
+          </button>
+        </div>
+
+        <button id="modalDownloadStampBtn" class="inline-flex items-center px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium transition-colors">
+          <i class="fa-solid fa-stamp mr-1.5 text-amber-400"></i>
+          โหลดรูปภาพสลักพิกัด GPS
         </button>
       </div>
     </div>
@@ -456,8 +534,15 @@
     const searchInput = document.getElementById('searchInput');
     const filterSelect = document.getElementById('filterSelect');
     const btnExportCsv = document.getElementById('btnExportCsv');
+    const btnOpenExportModal = document.getElementById('btnOpenExportModal');
     const btnFitMap = document.getElementById('btnFitMap');
     const btnClearAll = document.getElementById('btnClearAll');
+
+    const exportModal = document.getElementById('exportModal');
+    const btnCloseExportModal = document.getElementById('btnCloseExportModal');
+    const btnCancelExportModal = document.getElementById('btnCancelExportModal');
+    const optExportStamped = document.getElementById('optExportStamped');
+    const optExportRenamed = document.getElementById('optExportRenamed');
 
     const tabBtnMap = document.getElementById('tabBtnMap');
     const tabBtnTable = document.getElementById('tabBtnTable');
@@ -476,6 +561,7 @@
     const modalCoords = document.getElementById('modalCoords');
     const modalGmapsBtn = document.getElementById('modalGmapsBtn');
     const modalLocateBtn = document.getElementById('modalLocateBtn');
+    const modalDownloadStampBtn = document.getElementById('modalDownloadStampBtn');
 
     // Tile Layer Providers
     const tileProviders = {
@@ -628,6 +714,20 @@
 
       // Action Buttons
       btnExportCsv.addEventListener('click', exportToCsv);
+      btnOpenExportModal.addEventListener('click', () => exportModal.classList.remove('hidden'));
+      btnCloseExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
+      btnCancelExportModal.addEventListener('click', () => exportModal.classList.add('hidden'));
+
+      optExportStamped.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportStampedImagesZip();
+      });
+
+      optExportRenamed.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportRenamedOriginalsZip();
+      });
+
       btnFitMap.addEventListener('click', fitMapToBounds);
       btnClearAll.addEventListener('click', clearAllData);
 
@@ -644,6 +744,11 @@
         if (activeModalItem && activeModalItem.hasGps) {
           closeModal();
           locateItemOnMap(activeModalItem.id);
+        }
+      });
+      modalDownloadStampBtn.addEventListener('click', () => {
+        if (activeModalItem) {
+          downloadSingleStampedImage(activeModalItem);
         }
       });
     }
@@ -952,6 +1057,9 @@
           `;
         }
         actionButtons += `
+          <button class="btn-stamp-download inline-flex items-center justify-center w-7 h-7 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-600 transition-colors" title="โหลดรูปสลักพิกัด GPS">
+            <i class="fa-solid fa-stamp"></i>
+          </button>
           <button class="btn-delete inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors" title="ลบรายการ">
             <i class="fa-solid fa-trash"></i>
           </button>
@@ -974,6 +1082,14 @@
           locateBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             locateItemOnMap(item.id);
+          });
+        }
+
+        const stampBtn = tdActions.querySelector('.btn-stamp-download');
+        if (stampBtn) {
+          stampBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadSingleStampedImage(item);
           });
         }
 
@@ -1042,6 +1158,186 @@
         marker.bindPopup(popupContent);
         markersGroup.addLayer(marker);
       });
+    }
+
+    // Canvas Stamping Engine (Draw GPS Watermark on Image)
+    async function generateStampedImageBlob(item) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+
+          // Draw original image
+          ctx.drawImage(img, 0, 0);
+
+          // Calculate dynamic banner sizing based on resolution
+          const bannerHeight = Math.max(60, Math.round(canvas.height * 0.12));
+          const fontSizeLarge = Math.max(16, Math.round(bannerHeight * 0.28));
+          const fontSizeSmall = Math.max(12, Math.round(bannerHeight * 0.22));
+
+          // Draw dark slate banner at bottom
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+          ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, bannerHeight);
+
+          // Accent border line at top of banner
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(0, canvas.height - bannerHeight, canvas.width, Math.max(3, Math.round(bannerHeight * 0.04)));
+
+          // Text styling - Line 1: GPS Coords
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${fontSizeLarge}px Prompt, sans-serif`;
+          
+          const paddingX = Math.max(15, Math.round(canvas.width * 0.03));
+          let currentY = canvas.height - bannerHeight + (bannerHeight * 0.38);
+
+          const coordsText = item.hasGps ? `GPS: ${item.lat}, ${item.lng}` : `GPS: ไม่พบข้อมูลพิกัด`;
+          ctx.fillText(coordsText, paddingX, currentY);
+
+          // Text styling - Line 2: Date & Filename
+          ctx.fillStyle = '#cbd5e1';
+          ctx.font = `${fontSizeSmall}px Prompt, sans-serif`;
+          currentY += (bannerHeight * 0.35);
+          const infoText = `วันที่: ${item.dateTakenFormatted}   |   ไฟล์: ${item.fileName}`;
+          ctx.fillText(infoText, paddingX, currentY);
+
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error('Canvas toBlob failed'));
+          }, 'image/jpeg', 0.92);
+        };
+
+        img.onerror = (err) => reject(err);
+        img.src = item.thumbnailUrl || URL.createObjectURL(item.file);
+      });
+    }
+
+    // Download Single Stamped Image
+    async function downloadSingleStampedImage(item) {
+      try {
+        showToast('กำลังสร้างรูปภาพประทับตราพิกัด...', 'info');
+        const blob = await generateStampedImageBlob(item);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const namePart = item.hasGps ? `${item.lat}_${item.lng}` : 'NoGPS';
+        a.download = `STAMPED_${namePart}_${item.fileName}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('ดาวน์โหลดรูปภาพสลักพิกัดเรียบร้อยแล้ว!', 'success');
+      } catch (err) {
+        console.error('Failed stamping image:', err);
+        showToast('เกิดข้อผิดพลาดในการสร้างรูปภาพประทับตรา', 'warning');
+      }
+    }
+
+    // Export Mode 1: Zip of Stamped Images
+    async function exportStampedImagesZip() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
+        return;
+      }
+
+      if (!window.JSZip) {
+        showToast('กำลังโหลดระบบบีบอัด Zip... ลองใหม่อีกครั้งในครู่เดียว', 'warning');
+        return;
+      }
+
+      progressContainer.classList.remove('hidden');
+      updateProgress(0, extractedItems.length, extractedItems.filter(i => i.hasGps).length);
+      progressStatusText.innerText = 'กำลังสลักพิกัดประทับตราบนรูปภาพทั้งหมด...';
+
+      const zip = new JSZip();
+      const folder = zip.folder('GPS_Stamped_Photos');
+
+      for (let i = 0; i < extractedItems.length; i++) {
+        const item = extractedItems[i];
+        try {
+          const blob = await generateStampedImageBlob(item);
+          const namePart = item.hasGps ? `${item.lat}_${item.lng}` : 'NoGPS';
+          const fileName = `STAMP_${namePart}_${item.fileName.replace(/\.[^/.]+$/, "")}.jpg`;
+          folder.file(fileName, blob);
+        } catch (err) {
+          console.warn('Error stamping file:', item.fileName, err);
+        }
+
+        updateProgress(i + 1, extractedItems.length, extractedItems.filter(k => k.hasGps).length);
+        await new Promise(r => setTimeout(r, 10));
+      }
+
+      progressStatusText.innerText = 'กำลังบีบอัดไฟล์ Zip...';
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+      
+      const url = URL.createObjectURL(zipContent);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GPS_Stamped_Photos_${timestamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      progressContainer.classList.add('hidden');
+      showToast(`ดาวน์โหลด Zip รูปสลักพิกัดเรียบร้อยแล้ว (${extractedItems.length} รูป)!`, 'success');
+    }
+
+    // Export Mode 3: Zip of Renamed Original Images
+    async function exportRenamedOriginalsZip() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีรูปภาพสำหรับส่งออก', 'warning');
+        return;
+      }
+
+      if (!window.JSZip) {
+        showToast('กำลังโหลดระบบบีบอัด Zip... ลองใหม่อีกครั้งในครู่เดียว', 'warning');
+        return;
+      }
+
+      progressContainer.classList.remove('hidden');
+      updateProgress(0, extractedItems.length, extractedItems.filter(i => i.hasGps).length);
+      progressStatusText.innerText = 'กำลังจัดเตรียมรูปภาพเปลี่ยนชื่อตามพิกัด...';
+
+      const zip = new JSZip();
+      const folder = zip.folder('GPS_Renamed_Photos');
+
+      for (let i = 0; i < extractedItems.length; i++) {
+        const item = extractedItems[i];
+        try {
+          const namePart = item.hasGps ? `${item.lat}_${item.lng}` : 'NoGPS';
+          const newFileName = `${namePart}_${item.fileName}`;
+          folder.file(newFileName, item.file);
+        } catch (err) {
+          console.warn('Error renaming file:', item.fileName, err);
+        }
+
+        updateProgress(i + 1, extractedItems.length, extractedItems.filter(k => k.hasGps).length);
+      }
+
+      progressStatusText.innerText = 'กำลังบีบอัดไฟล์ Zip...';
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+      
+      const url = URL.createObjectURL(zipContent);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GPS_Renamed_Original_Photos_${timestamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      progressContainer.classList.add('hidden');
+      showToast(`ดาวน์โหลด Zip รูปเปลี่ยนชื่อตามพิกัดเรียบร้อยแล้ว (${extractedItems.length} รูป)!`, 'success');
     }
 
     // Auto-fit map view to contain all GPS markers
