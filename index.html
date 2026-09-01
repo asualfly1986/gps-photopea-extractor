@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GPS Photo EXIF Extractor & Map Visualizer</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- EXIF Reader (exifr) -->
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+  
+  <!-- HEIC Converter (heic2any) -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+
+  <!-- Google Identity Services & Google API Client -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://apis.google.com/js/api.js" async defer></script>
+  
+  <!-- Google Fonts: Prompt & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+    }
+    .leaflet-popup-content-wrapper {
+      border-radius: 1rem;
+      padding: 0.25rem;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    }
+    .leaflet-container {
+      font-family: 'Prompt', sans-serif !important;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+  <!-- Header Navbar -->
+  <header class="bg-gradient-to-r from-slate-900 via-brand-900 to-slate-900 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-brand-500/20 border border-brand-400/30 flex items-center justify-center text-brand-400 shadow-inner">
+          <i class="fa-solid fa-location-dot text-xl text-sky-400"></i>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-sky-100 to-sky-300">
+            GPS Photo EXIF Extractor
+          </h1>
+          <p class="text-xs text-sky-200/70 hidden sm:block">ดึงพิกัด GPS แสดงบนแผนที่ และ Export CSV (Client-side 100%)</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-2">
+        <button id="btnOpenGoogleSettings" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-sky-100 border border-sky-300/30 transition-colors cursor-pointer" title="ตั้งค่า Google Photos Client ID">
+          <i class="fa-brands fa-google mr-1.5 text-rose-400"></i>
+          <span>ตั้งค่า Google API</span>
+        </button>
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hidden sm:inline-flex">
+          <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Privacy First
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Hero / Upload Section -->
+    <section class="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 sm:p-6 transition-all">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <!-- Left info -->
+        <div class="flex-1 space-y-2 text-center md:text-left">
+          <h2 class="text-xl sm:text-2xl font-bold text-slate-800">
+            ดึงพิกัดตำแหน่งจากรูปภาพของคุณ
+          </h2>
+          <p class="text-sm text-slate-600 leading-relaxed max-w-xl">
+            อัปโหลดรูปภาพเพื่อดึงข้อมูลพิกัด <span class="font-medium text-slate-800">Latitude, Longitude</span> และวันเวลาถ่ายภาพ 
+            รองรับไฟล์ <span class="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 text-xs font-mono font-semibold">.JPG</span>, 
+            <span class="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 text-xs font-mono font-semibold">.PNG</span> และ 
+            <span class="px-1.5 py-0.5 bg-sky-50 text-sky-700 rounded text-xs font-mono font-semibold">.HEIC / .HEIF</span> จาก iPhone หรือดึงจาก <span class="px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded text-xs font-semibold">Google Photos</span>
+          </p>
+        </div>
+
+        <!-- Right Upload Buttons -->
+        <div class="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
+          <!-- Multi Files Button -->
+          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium shadow-md shadow-brand-500/20 transition-all cursor-pointer">
+            <i class="fa-solid fa-images mr-2 text-lg"></i>
+            <span>เลือกรูปภาพทั้งหมด</span>
+          </button>
+          
+          <!-- Folder Upload Button -->
+          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-medium shadow-md shadow-slate-900/10 transition-all cursor-pointer">
+            <i class="fa-solid fa-folder-open mr-2 text-lg text-amber-400"></i>
+            <span>เลือกทั้งโฟลเดอร์</span>
+          </button>
+
+          <!-- Google Photos Direct Picker Button -->
+          <button id="btnSelectGooglePhotos" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-medium shadow-sm transition-all cursor-pointer">
+            <i class="fa-brands fa-google mr-2 text-lg text-rose-500"></i>
+            <span>Google Photos</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="dropzone" class="mt-6 border-2 border-dashed border-slate-300 hover:border-brand-500 bg-slate-50/50 hover:bg-sky-50/40 rounded-2xl p-8 text-center transition-all cursor-pointer group">
+        <div class="flex flex-col items-center justify-center space-y-3">
+          <div class="w-16 h-16 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center text-brand-600 group-hover:scale-110 transition-transform">
+            <i class="fa-solid fa-cloud-arrow-up text-2xl group-hover:text-brand-500"></i>
+          </div>
+          <div>
+            <p class="text-base font-semibold text-slate-700 group-hover:text-brand-700">
+              ลากรูปภาพหรือโฟลเดอร์มาวางที่นี่
+            </p>
+            <p class="text-xs text-slate-500 mt-1">
+              หรือคลิกเพื่อเลือกไฟล์จากอุปกรณ์ (เลือกได้หลายรูปพร้อมกัน)
+            </p>
+          </div>
+          <div class="flex items-center gap-2 pt-1 text-xs text-slate-400">
+            <span class="inline-flex items-center"><i class="fa-solid fa-shield-halved mr-1 text-emerald-500"></i> ปลอดภัย ไม่ส่งไฟล์ขึ้นเซิร์ฟเวอร์</span>
+            <span>•</span>
+            <span>รองรับมือถือ Android & iOS</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden Inputs -->
+      <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif" class="hidden">
+      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif" class="hidden">
+    </section>
+
+    <!-- Progress Bar -->
+    <div id="progressContainer" class="hidden bg-white rounded-2xl p-5 shadow-lg border border-sky-100 space-y-3">
+      <div class="flex items-center justify-between text-sm">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-spinner animate-spin text-brand-600 text-lg"></i>
+          <span id="progressStatusText" class="font-medium text-slate-700">กำลังอ่านข้อมูล GPS Metadata...</span>
+        </div>
+        <span id="progressPercentText" class="font-bold text-brand-600">0%</span>
+      </div>
+      <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+        <div id="progressBar" class="bg-gradient-to-r from-brand-500 to-sky-400 h-3 rounded-full transition-all duration-200 w-0"></div>
+      </div>
+      <div class="flex justify-between text-xs text-slate-500">
+        <span id="progressCountText">สแกนไปแล้ว 0 จาก 0 รูป</span>
+        <span id="progressGpsCountText" class="text-emerald-600 font-medium"><i class="fa-solid fa-location-dot mr-1"></i>พบพิกัด: 0 รูป</span>
+      </div>
+    </div>
+
+    <!-- Dashboard Content (Stats + View Toggle) -->
+    <div id="dashboardSection" class="hidden space-y-6">
+      
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <!-- Total -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200/80 flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <i class="fa-solid fa-images text-lg"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">รูปภาพทั้งหมด</p>
+            <p id="statTotal" class="text-xl font-bold text-slate-800">0</p>
+          </div>
+        </div>
+        
+        <!-- With GPS -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-emerald-100 flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-location-dot text-lg"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">พบพิกัด GPS</p>
+            <p id="statWithGps" class="text-xl font-bold text-emerald-600">0</p>
+          </div>
+        </div>
+        
+        <!-- Without GPS -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-amber-100 flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-location-slash text-lg"></i>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">ไม่มีพิกัด GPS</p>
+            <p id="statNoGps" class="text-xl font-bold text-amber-600">0</p>
+          </div>
+        </div>
+        
+        <!-- Status Card -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-brand-100 flex items-center justify-between col-span-2 sm:col-span-1">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-lg bg-sky-50 text-brand-600 flex items-center justify-center shrink-0">
+              <i class="fa-solid fa-file-csv text-lg"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500">สถานะ</p>
+              <p class="text-sm font-semibold text-slate-700">พร้อมส่งออก</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Bar & Controls -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-4">
+        
+        <!-- Search & Filter -->
+        <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          <!-- Search input -->
+          <div class="relative flex-1 sm:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="searchInput" placeholder="ค้นหาชื่อไฟล์ หรือ วันที่..." class="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+          </div>
+
+          <!-- Filter selector -->
+          <select id="filterSelect" class="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500">
+            <option value="all">แสดงทั้งหมด</option>
+            <option value="gps">เฉพาะที่มีพิกัด GPS</option>
+            <option value="nogps">เฉพาะที่ไม่มีพิกัด</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center justify-end gap-2.5 w-full md:w-auto">
+          <!-- Export CSV -->
+          <button id="btnExportCsv" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-medium rounded-lg shadow-sm transition-all cursor-pointer">
+            <i class="fa-solid fa-file-excel mr-2 text-base"></i>
+            <span>Export CSV (ภาษาไทย)</span>
+          </button>
+
+          <!-- Fit Map Bounds -->
+          <button id="btnFitMap" class="inline-flex items-center justify-center px-3 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-sm font-medium rounded-lg transition-all cursor-pointer" title="ปรับมุมมองแผนที่ให้ครอบคลุมทุกหมุด">
+            <i class="fa-solid fa-expand mr-1.5"></i>
+            <span class="hidden sm:inline">โฟกัสแผนที่</span>
+          </button>
+
+          <!-- Clear All -->
+          <button id="btnClearAll" class="inline-flex items-center justify-center px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-sm font-medium rounded-lg transition-all cursor-pointer" title="ล้างข้อมูลทั้งหมด">
+            <i class="fa-solid fa-trash-can mr-1.5"></i>
+            <span class="hidden sm:inline">ล้างข้อมูล</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile Tab Switcher (Visible on Mobile/Tablet) -->
+      <div class="flex lg:hidden bg-slate-200/80 p-1 rounded-xl">
+        <button id="tabBtnMap" class="flex-1 py-2 rounded-lg text-sm font-medium text-slate-700 transition-all bg-white shadow-sm flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-map-marked-alt text-brand-600"></i>
+          <span>แผนที่ (Map)</span>
+        </button>
+        <button id="tabBtnTable" class="flex-1 py-2 rounded-lg text-sm font-medium text-slate-600 transition-all flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-table-list text-slate-500"></i>
+          <span>ตารางข้อมูล (Table)</span>
+        </button>
+      </div>
+
+      <!-- Main Dual Panel View (Map + Table) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left Column: Map Container -->
+        <div id="mapPanel" class="lg:col-span-6 xl:col-span-7 flex flex-col space-y-2">
+          <div class="flex items-center justify-between px-1">
+            <h3 class="text-base font-bold text-slate-800 flex items-center">
+              <i class="fa-solid fa-map-location-dot text-brand-600 mr-2"></i>
+              แผนที่แสดงตำแหน่งรูปภาพ (Interactive Map)
+            </h3>
+            <span class="text-xs text-slate-500">คลิกที่หมุดเพื่อดูรายละเอียด</span>
+          </div>
+          
+          <div class="bg-white p-2 rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden relative">
+            <div id="map" class="w-full h-[450px] sm:h-[550px] rounded-xl z-10"></div>
+          </div>
+        </div>
+
+        <!-- Right Column: Data Table Container -->
+        <div id="tablePanel" class="lg:col-span-6 xl:col-span-5 hidden lg:flex flex-col space-y-2">
+          <div class="flex items-center justify-between px-1">
+            <h3 class="text-base font-bold text-slate-800 flex items-center">
+              <i class="fa-solid fa-list-ul text-brand-600 mr-2"></i>
+              รายการรูปภาพ (<span id="tableItemCount">0</span>)
+            </h3>
+            <span class="text-xs text-slate-400">คลิกรายการเพื่อซูมแผนที่</span>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden flex-1 flex flex-col">
+            <div class="overflow-x-auto max-h-[550px] overflow-y-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider sticky top-0 z-20 border-b border-slate-200">
+                  <tr>
+                    <th class="py-3 px-3">รูปภาพ</th>
+                    <th class="py-3 px-3">ชื่อไฟล์ / วันที่</th>
+                    <th class="py-3 px-3">พิกัด GPS</th>
+                    <th class="py-3 px-3 text-right">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-100 text-slate-700">
+                  <!-- Dynamic Rows Inserted Here -->
+                </tbody>
+              </table>
+
+              <!-- Empty State -->
+              <div id="tableEmptyState" class="hidden py-12 text-center text-slate-400 space-y-2">
+                <i class="fa-regular fa-folder-open text-4xl text-slate-300"></i>
+                <p class="text-sm font-medium text-slate-500">ไม่พบรูปภาพตรงตามเงื่อนไขค้นหา</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Google Photos Client ID Configuration Modal -->
+  <div id="googleSettingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
+      <!-- Modal Header -->
+      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="text-sm font-bold flex items-center">
+          <i class="fa-brands fa-google text-rose-400 mr-2 text-lg"></i>
+          ตั้งค่า Google Photos API Client ID
+        </h3>
+        <button id="btnCloseGoogleModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-5 space-y-4 text-xs text-slate-600">
+        <p class="leading-relaxed">
+          การดึงรูปภาพโดยตรงจาก Google Photos ต้องใช้ <strong class="text-slate-800">Google OAuth Client ID</strong> เพื่อเชื่อมต่อสิทธิ์กับ Google
+        </p>
+
+        <div class="space-y-1.5">
+          <label for="inputGoogleClientId" class="block font-semibold text-slate-700">Google Client ID:</label>
+          <input type="text" id="inputGoogleClientId" placeholder="xxxxxxxxx-xxxxxxxxxx.apps.googleusercontent.com" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-mono text-xs">
+          <p class="text-[11px] text-slate-400">ระบบจะบันทึก Client ID ไว้ในเบราว์เซอร์ของคุณอย่างปลอดภัย</p>
+        </div>
+
+        <!-- Instructions Box -->
+        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+          <p class="font-bold text-slate-700 flex items-center">
+            <i class="fa-solid fa-circle-info text-sky-500 mr-1.5"></i>
+            วิธีสร้าง Client ID ฟรี (Google Cloud Console):
+          </p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600 leading-relaxed">
+            <li>ไปที่ <a href="https://console.cloud.google.com/" target="_blank" class="text-brand-600 underline font-semibold">Google Cloud Console</a> แล้วสร้าง Project ใหม่</li>
+            <li>ไปที่ <strong>APIs & Services > Credentials</strong></li>
+            <li>กด <strong>Create Credentials > OAuth client ID</strong> เลือกประเภท <strong>Web application</strong></li>
+            <li>ใส่ Origin ของคุณ (เช่น <code class="bg-slate-200 px-1 rounded">http://localhost</code> หรือ URL เว็บ) ใน Authorized JavaScript origins</li>
+            <li>คัดลอก Client ID ที่ได้มาวางในช่องด้านบน แล้วกดบันทึก</li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-2">
+        <button id="btnCancelGoogleModal" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium transition-colors">
+          ยกเลิก
+        </button>
+        <button id="btnSaveGoogleClientId" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
+          บันทึก Client ID
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div id="imageModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <!-- Modal Header -->
+      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
+        <h3 id="modalFileName" class="text-sm font-medium truncate max-w-md">ชื่อรูปภาพ</h3>
+        <button id="btnCloseModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <!-- Modal Content -->
+      <div class="p-4 overflow-y-auto space-y-4 flex-1">
+        <div class="bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center max-h-[60vh]">
+          <img id="modalImage" src="" alt="Full preview" class="max-h-[60vh] w-auto object-contain">
+        </div>
+        
+        <!-- Metadata Details Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+          <div>
+            <span class="text-slate-400">ขนาดไฟล์:</span>
+            <span id="modalFileSize" class="font-medium text-slate-700 ml-1">-</span>
+          </div>
+          <div>
+            <span class="text-slate-400">วันที่ถ่ายภาพ:</span>
+            <span id="modalDateTaken" class="font-medium text-slate-700 ml-1">-</span>
+          </div>
+          <div class="sm:col-span-2">
+            <span class="text-slate-400">พิกัด GPS:</span>
+            <span id="modalCoords" class="font-mono font-semibold text-brand-600 ml-1">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+        <a id="modalGmapsBtn" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium transition-colors">
+          <i class="fa-solid fa-map-location-dot mr-1.5"></i>
+          เปิดดูบน Google Maps
+        </a>
+        <button id="modalLocateBtn" class="inline-flex items-center px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
+          <i class="fa-solid fa-crosshairs mr-1.5"></i>
+          ซูมไปยังตำแหน่งในแผนที่
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div class="bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm">
+      <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+      <span id="toastMessage">แจ้งเตือนสำเร็จ</span>
+    </div>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    // Global State
+    let extractedItems = [];
+    let map = null;
+    let markersGroup = null;
+    let activeModalItem = null;
+
+    // Google API State
+    let tokenClient = null;
+    let googleAccessToken = null;
+    let pickerApiLoaded = false;
+
+    // DOM Elements
+    const fileInput = document.getElementById('fileInput');
+    const folderInput = document.getElementById('folderInput');
+    const btnSelectFiles = document.getElementById('btnSelectFiles');
+    const btnSelectFolder = document.getElementById('btnSelectFolder');
+    const btnSelectGooglePhotos = document.getElementById('btnSelectGooglePhotos');
+    const btnOpenGoogleSettings = document.getElementById('btnOpenGoogleSettings');
+    const dropzone = document.getElementById('dropzone');
+
+    const googleSettingsModal = document.getElementById('googleSettingsModal');
+    const btnCloseGoogleModal = document.getElementById('btnCloseGoogleModal');
+    const btnCancelGoogleModal = document.getElementById('btnCancelGoogleModal');
+    const btnSaveGoogleClientId = document.getElementById('btnSaveGoogleClientId');
+    const inputGoogleClientId = document.getElementById('inputGoogleClientId');
+
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercentText = document.getElementById('progressPercentText');
+    const progressStatusText = document.getElementById('progressStatusText');
+    const progressCountText = document.getElementById('progressCountText');
+    const progressGpsCountText = document.getElementById('progressGpsCountText');
+
+    const dashboardSection = document.getElementById('dashboardSection');
+    const statTotal = document.getElementById('statTotal');
+    const statWithGps = document.getElementById('statWithGps');
+    const statNoGps = document.getElementById('statNoGps');
+
+    const searchInput = document.getElementById('searchInput');
+    const filterSelect = document.getElementById('filterSelect');
+    const btnExportCsv = document.getElementById('btnExportCsv');
+    const btnFitMap = document.getElementById('btnFitMap');
+    const btnClearAll = document.getElementById('btnClearAll');
+
+    const tabBtnMap = document.getElementById('tabBtnMap');
+    const tabBtnTable = document.getElementById('tabBtnTable');
+    const mapPanel = document.getElementById('mapPanel');
+    const tablePanel = document.getElementById('tablePanel');
+    const tableBody = document.getElementById('tableBody');
+    const tableEmptyState = document.getElementById('tableEmptyState');
+    const tableItemCount = document.getElementById('tableItemCount');
+
+    const imageModal = document.getElementById('imageModal');
+    const btnCloseModal = document.getElementById('btnCloseModal');
+    const modalImage = document.getElementById('modalImage');
+    const modalFileName = document.getElementById('modalFileName');
+    const modalFileSize = document.getElementById('modalFileSize');
+    const modalDateTaken = document.getElementById('modalDateTaken');
+    const modalCoords = document.getElementById('modalCoords');
+    const modalGmapsBtn = document.getElementById('modalGmapsBtn');
+    const modalLocateBtn = document.getElementById('modalLocateBtn');
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      setupEventListeners();
+      loadGoogleClientId();
+    });
+
+    // Initialize Leaflet Map
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: true
+      }).setView([13.736717, 100.523186], 6);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      markersGroup = L.layerGroup().addTo(map);
+    }
+
+    // Event Listeners Setup
+    function setupEventListeners() {
+      // Button Triggers for File Input
+      btnSelectFiles.addEventListener('click', () => fileInput.click());
+      btnSelectFolder.addEventListener('click', () => folderInput.click());
+      dropzone.addEventListener('click', () => fileInput.click());
+
+      // Google Photos Buttons
+      btnSelectGooglePhotos.addEventListener('click', handleGooglePhotosClick);
+      btnOpenGoogleSettings.addEventListener('click', openGoogleSettingsModal);
+
+      // Google Settings Modal Handlers
+      btnCloseGoogleModal.addEventListener('click', closeGoogleSettingsModal);
+      btnCancelGoogleModal.addEventListener('click', closeGoogleSettingsModal);
+      btnSaveGoogleClientId.addEventListener('click', saveGoogleClientId);
+
+      // File Selection Changes
+      fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
+      folderInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
+
+      // Drag and Drop Events
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('border-brand-500', 'bg-sky-50/80', 'scale-[1.01]');
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove('border-brand-500', 'bg-sky-50/80', 'scale-[1.01]');
+        }, false);
+      });
+
+      dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files.length > 0) {
+          handleFilesSelected(dt.files);
+        }
+      });
+
+      // Filter & Search Controls
+      searchInput.addEventListener('input', renderDashboard);
+      filterSelect.addEventListener('change', renderDashboard);
+
+      // Action Buttons
+      btnExportCsv.addEventListener('click', exportToCsv);
+      btnFitMap.addEventListener('click', fitMapToBounds);
+      btnClearAll.addEventListener('click', clearAllData);
+
+      // Mobile Tabs Toggle
+      tabBtnMap.addEventListener('click', () => setMobileTab('map'));
+      tabBtnTable.addEventListener('click', () => setMobileTab('table'));
+
+      // Modal Close Events
+      btnCloseModal.addEventListener('click', closeModal);
+      imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) closeModal();
+      });
+      modalLocateBtn.addEventListener('click', () => {
+        if (activeModalItem && activeModalItem.hasGps) {
+          closeModal();
+          locateItemOnMap(activeModalItem.id);
+        }
+      });
+    }
+
+    // Google API Integration Handlers
+    function loadGoogleClientId() {
+      const storedId = localStorage.getItem('google_client_id');
+      if (storedId) {
+        inputGoogleClientId.value = storedId;
+      }
+    }
+
+    function openGoogleSettingsModal() {
+      loadGoogleClientId();
+      googleSettingsModal.classList.remove('hidden');
+    }
+
+    function closeGoogleSettingsModal() {
+      googleSettingsModal.classList.add('hidden');
+    }
+
+    function saveGoogleClientId() {
+      const val = inputGoogleClientId.value.trim();
+      if (!val) {
+        showToast('กรุณากรอก Google Client ID', 'warning');
+        return;
+      }
+      localStorage.setItem('google_client_id', val);
+      closeGoogleSettingsModal();
+      showToast('บันทึก Client ID เรียบร้อยแล้ว', 'success');
+    }
+
+    // Handle Google Photos Click
+    function handleGooglePhotosClick() {
+      const clientId = localStorage.getItem('google_client_id');
+      if (!clientId) {
+        openGoogleSettingsModal();
+        showToast('กรุณากรอก Google Client ID ก่อนเริ่มต้นใช้งาน', 'info');
+        return;
+      }
+
+      if (!window.google || !window.google.accounts) {
+        showToast('กำลังโหลด Google API... กรุณาลองใหม่อีกครั้งในครู่เดียว', 'warning');
+        return;
+      }
+
+      // Initialize OAuth 2.0 token client
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: 'https://www.googleapis.com/auth/photopicker.mediaitems.readonly https://www.googleapis.com/auth/photoslibrary.readonly',
+        callback: async (response) => {
+          if (response.error) {
+            showToast('การขอสิทธิ์ Google Photos ล้มเหลว: ' + response.error, 'warning');
+            return;
+          }
+          googleAccessToken = response.access_token;
+          openGooglePickerUI();
+        },
+      });
+
+      if (googleAccessToken) {
+        openGooglePickerUI();
+      } else {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+      }
+    }
+
+    // Open Google Picker API UI
+    function openGooglePickerUI() {
+      if (window.gapi) {
+        gapi.load('picker', {
+          callback: () => {
+            const view = new google.picker.PhotosView();
+            const picker = new google.picker.PickerBuilder()
+              .addView(view)
+              .setOAuthToken(googleAccessToken)
+              .setCallback(onGooglePickerCallback)
+              .setTitle('เลือกรูปภาพจาก Google Photos')
+              .build();
+            picker.setVisible(true);
+          }
+        });
+      } else {
+        showToast('ไม่สามารถโหลด Google Picker SDK ได้', 'warning');
+      }
+    }
+
+    // Callback when user picks photos in Google Picker
+    async function onGooglePickerCallback(data) {
+      if (data.action === google.picker.Action.PICKED) {
+        const docs = data.docs;
+        if (!docs || docs.length === 0) return;
+
+        progressContainer.classList.remove('hidden');
+        updateProgress(0, docs.length, 0);
+        showToast(`กำลังดาวน์โหลดรูปภาพจาก Google Photos (${docs.length} รูป)...`, 'info');
+
+        const downloadedFiles = [];
+
+        for (let i = 0; i < docs.length; i++) {
+          const doc = docs[i];
+          try {
+            // Fetch photo metadata from Photos Library API
+            const mediaRes = await fetch(`https://photoslibrary.googleapis.com/v1/mediaItems/${doc.id}`, {
+              headers: { Authorization: `Bearer ${googleAccessToken}` }
+            });
+            
+            let photoUrl = null;
+            let fileName = doc.name || `google_photo_${i+1}.jpg`;
+
+            if (mediaRes.ok) {
+              const mediaItem = await mediaRes.json();
+              // '=d' parameter forces download of original file with EXIF GPS intact!
+              photoUrl = `${mediaItem.baseUrl}=d`;
+              if (mediaItem.filename) fileName = mediaItem.filename;
+            } else {
+              photoUrl = doc.url;
+            }
+
+            // Fetch Blob of image
+            const blobRes = await fetch(photoUrl);
+            const blob = await blobRes.blob();
+            const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
+            downloadedFiles.push(file);
+
+          } catch (err) {
+            console.warn('Failed downloading Google Photo item:', err);
+          }
+        }
+
+        if (downloadedFiles.length > 0) {
+          handleFilesSelected(downloadedFiles);
+        } else {
+          progressContainer.classList.add('hidden');
+          showToast('ไม่สามารถดาวน์โหลดไฟล์จาก Google Photos ได้', 'warning');
+        }
+      }
+    }
+
+    // Helper: Check image file type
+    function isImageFile(file) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      const validExts = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'tiff'];
+      return file.type.startsWith('image/') || validExts.includes(ext);
+    }
+
+    // Helper: Format Bytes to human readable
+    function formatBytes(bytes, decimals = 2) {
+      if (!bytes || bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const dm = decimals < 0 ? 0 : decimals;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+
+    // Helper: Format Date
+    function formatDate(dateObj) {
+      if (!dateObj) return 'ไม่ทราบวันที่';
+      try {
+        const d = new Date(dateObj);
+        if (isNaN(d.getTime())) return 'ไม่ทราบวันที่';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        const secs = String(d.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${mins}:${secs}`;
+      } catch (e) {
+        return 'ไม่ทราบวันที่';
+      }
+    }
+
+    // Handle File Processing Pipeline
+    async function handleFilesSelected(fileList) {
+      if (!fileList || fileList.length === 0) return;
+
+      const rawFiles = Array.from(fileList);
+      const imageFiles = rawFiles.filter(isImageFile);
+
+      if (imageFiles.length === 0) {
+        showToast('ไม่พบไฟล์รูปภาพที่รองรับในไฟล์ที่เลือก', 'warning');
+        return;
+      }
+
+      // Show Progress Bar
+      progressContainer.classList.remove('hidden');
+      updateProgress(0, imageFiles.length, 0);
+
+      let processedCount = 0;
+      let gpsFoundCount = 0;
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        
+        try {
+          const itemData = await processSingleFile(file);
+          extractedItems.push(itemData);
+          if (itemData.hasGps) gpsFoundCount++;
+        } catch (err) {
+          console.warn(`Error processing file ${file.name}:`, err);
+        }
+
+        processedCount++;
+        updateProgress(processedCount, imageFiles.length, gpsFoundCount);
+        
+        if (i % 3 === 0) {
+          await new Promise(r => setTimeout(r, 10));
+        }
+      }
+
+      // Hide progress after slight delay
+      setTimeout(() => {
+        progressContainer.classList.add('hidden');
+        dashboardSection.classList.remove('hidden');
+        renderDashboard();
+        fitMapToBounds();
+        showToast(`ประมวลผลเสร็จสิ้น ${processedCount} รูป (พบพิกัด ${gpsFoundCount} รูป)`, 'success');
+      }, 500);
+
+      fileInput.value = '';
+      folderInput.value = '';
+    }
+
+    // Process a single image file for EXIF and Thumbnail
+    async function processSingleFile(file) {
+      const id = 'img_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+      const ext = file.name.split('.').pop().toLowerCase();
+      const isHeic = (ext === 'heic' || ext === 'heif');
+
+      let lat = null;
+      let lng = null;
+      let dateTaken = null;
+      let hasGps = false;
+      let thumbnailUrl = null;
+
+      // 1. Extract EXIF via exifr library
+      try {
+        if (window.exifr) {
+          const gpsData = await exifr.gps(file);
+          if (gpsData && typeof gpsData.latitude === 'number' && typeof gpsData.longitude === 'number') {
+            lat = Number(gpsData.latitude.toFixed(6));
+            lng = Number(gpsData.longitude.toFixed(6));
+            hasGps = true;
+          }
+
+          const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
+          if (exifData) {
+            dateTaken = exifData.DateTimeOriginal || exifData.CreateDate || exifData.ModifyDate || file.lastModifiedDate;
+          }
+        }
+      } catch (exifErr) {
+        console.warn('EXIF parsing failed for:', file.name, exifErr);
+      }
+
+      if (!dateTaken) {
+        dateTaken = file.lastModified ? new Date(file.lastModified) : new Date();
+      }
+
+      // 2. Generate Thumbnail URL
+      if (isHeic) {
+        try {
+          if (window.heic2any) {
+            const convertedBlob = await heic2any({
+              blob: file,
+              toType: 'image/jpeg',
+              quality: 0.4
+            });
+            const blobObj = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+            thumbnailUrl = URL.createObjectURL(blobObj);
+          } else {
+            thumbnailUrl = null;
+          }
+        } catch (heicErr) {
+          console.warn('HEIC preview conversion failed:', file.name);
+          thumbnailUrl = null;
+        }
+      } else {
+        thumbnailUrl = URL.createObjectURL(file);
+      }
+
+      const formattedDate = formatDate(dateTaken);
+      const fullCoords = hasGps ? `${lat}, ${lng}` : 'ไม่มีข้อมูล GPS';
+      const googleMapsUrl = hasGps ? `https://www.google.com/maps?q=${lat},${lng}` : '#';
+
+      return {
+        id,
+        file,
+        fileName: file.name,
+        fileSize: formatBytes(file.size),
+        fileSizeBytes: file.size,
+        thumbnailUrl,
+        isHeic,
+        hasGps,
+        lat,
+        lng,
+        fullCoords,
+        dateTakenFormatted: formattedDate,
+        googleMapsUrl
+      };
+    }
+
+    // Update Progress Bar UI
+    function updateProgress(current, total, gpsCount) {
+      const percent = Math.round((current / total) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressPercentText.innerText = `${percent}%`;
+      progressStatusText.innerText = `กำลังสแกนรูปภาพ (${current} / ${total})...`;
+      progressCountText.innerText = `สแกนไปแล้ว ${current} จาก ${total} รูป`;
+      progressGpsCountText.innerHTML = `<i class="fa-solid fa-location-dot mr-1"></i>พบพิกัด: ${gpsCount} รูป`;
+    }
+
+    // Render Dashboard (Stats, Map, Table)
+    function renderDashboard() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filter = filterSelect.value;
+
+      const filtered = extractedItems.filter(item => {
+        if (filter === 'gps' && !item.hasGps) return false;
+        if (filter === 'nogps' && item.hasGps) return false;
+
+        if (query) {
+          const matchName = item.fileName.toLowerCase().includes(query);
+          const matchDate = item.dateTakenFormatted.toLowerCase().includes(query);
+          const matchCoords = item.fullCoords.toLowerCase().includes(query);
+          return matchName || matchDate || matchCoords;
+        }
+
+        return true;
+      });
+
+      const totalCount = extractedItems.length;
+      const withGpsCount = extractedItems.filter(i => i.hasGps).length;
+      const noGpsCount = totalCount - withGpsCount;
+
+      statTotal.innerText = totalCount;
+      statWithGps.innerText = withGpsCount;
+      statNoGps.innerText = noGpsCount;
+      tableItemCount.innerText = filtered.length;
+
+      renderTable(filtered);
+      renderMapMarkers(filtered);
+    }
+
+    // Render Data Table Rows
+    function renderTable(items) {
+      tableBody.innerHTML = '';
+
+      if (items.length === 0) {
+        tableEmptyState.classList.remove('hidden');
+        return;
+      }
+
+      tableEmptyState.classList.add('hidden');
+
+      items.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-sky-50/50 transition-colors cursor-pointer group';
+        
+        // Thumbnail Column
+        const tdThumb = document.createElement('td');
+        tdThumb.className = 'py-2.5 px-3';
+        if (item.thumbnailUrl) {
+          tdThumb.innerHTML = `
+            <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm relative group-hover:border-brand-400">
+              <img src="${item.thumbnailUrl}" alt="${item.fileName}" class="w-full h-full object-cover">
+            </div>
+          `;
+        } else {
+          tdThumb.innerHTML = `
+            <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-sm font-mono shrink-0">
+              <i class="fa-solid fa-file-image text-slate-400"></i>
+            </div>
+          `;
+        }
+        tdThumb.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openModal(item);
+        });
+
+        // Info Column
+        const tdInfo = document.createElement('td');
+        tdInfo.className = 'py-2.5 px-3 max-w-[140px] sm:max-w-xs';
+        tdInfo.innerHTML = `
+          <div class="font-medium text-slate-800 truncate text-xs group-hover:text-brand-600" title="${item.fileName}">
+            ${item.fileName}
+          </div>
+          <div class="text-[11px] text-slate-400 mt-0.5 flex items-center space-x-2">
+            <span>${item.fileSize}</span>
+            <span>•</span>
+            <span>${item.dateTakenFormatted}</span>
+          </div>
+        `;
+        tdInfo.addEventListener('click', () => {
+          if (item.hasGps) locateItemOnMap(item.id);
+          else openModal(item);
+        });
+
+        // GPS Column
+        const tdGps = document.createElement('td');
+        tdGps.className = 'py-2.5 px-3';
+        if (item.hasGps) {
+          tdGps.innerHTML = `
+            <div class="font-mono text-xs font-semibold text-slate-700 flex items-center space-x-1">
+              <i class="fa-solid fa-location-dot text-emerald-500 text-xs"></i>
+              <span>${item.lat}, ${item.lng}</span>
+            </div>
+            <button class="btn-copy-coords text-[10px] text-brand-600 hover:text-brand-800 underline mt-0.5" data-coords="${item.lat}, ${item.lng}">
+              <i class="fa-regular fa-copy mr-1"></i>คัดลอกพิกัด
+            </button>
+          `;
+        } else {
+          tdGps.innerHTML = `
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              <i class="fa-solid fa-circle-exclamation mr-1 text-[10px]"></i>ไม่มี GPS
+            </span>
+          `;
+        }
+
+        // Actions Column
+        const tdActions = document.createElement('td');
+        tdActions.className = 'py-2.5 px-3 text-right space-x-1 whitespace-nowrap';
+        
+        let actionButtons = '';
+        if (item.hasGps) {
+          actionButtons += `
+            <a href="${item.googleMapsUrl}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors" title="ดูบน Google Maps">
+              <i class="fa-solid fa-map-location-dot"></i>
+            </a>
+            <button class="btn-locate inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sky-50 hover:bg-sky-100 text-brand-600 transition-colors" title="ซูมไปยังแผนที่">
+              <i class="fa-solid fa-crosshairs"></i>
+            </button>
+          `;
+        }
+        actionButtons += `
+          <button class="btn-delete inline-flex items-center justify-center w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors" title="ลบรายการ">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        `;
+
+        tdActions.innerHTML = actionButtons;
+
+        const copyBtn = tdGps.querySelector('.btn-copy-coords');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const coordsStr = copyBtn.getAttribute('data-coords');
+            navigator.clipboard.writeText(coordsStr);
+            showToast(`คัดลอกพิกัด ${coordsStr} แล้ว`, 'success');
+          });
+        }
+
+        const locateBtn = tdActions.querySelector('.btn-locate');
+        if (locateBtn) {
+          locateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            locateItemOnMap(item.id);
+          });
+        }
+
+        const deleteBtn = tdActions.querySelector('.btn-delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSingleItem(item.id);
+          });
+        }
+
+        tr.appendChild(tdThumb);
+        tr.appendChild(tdInfo);
+        tr.appendChild(tdGps);
+        tr.appendChild(tdActions);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Render Markers on Leaflet Map
+    function renderMapMarkers(items) {
+      if (!markersGroup) return;
+
+      markersGroup.clearLayers();
+
+      const gpsItems = items.filter(i => i.hasGps);
+
+      gpsItems.forEach(item => {
+        const customIcon = L.divIcon({
+          className: 'custom-map-marker',
+          html: `
+            <div class="relative group">
+              <div class="w-8 h-8 rounded-full bg-brand-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform cursor-pointer">
+                <i class="fa-solid fa-camera text-xs"></i>
+              </div>
+            </div>
+          `,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const marker = L.marker([item.lat, item.lng], { icon: customIcon, itemId: item.id });
+
+        const popupContent = `
+          <div class="p-2 max-w-[220px] text-slate-800 space-y-2">
+            ${item.thumbnailUrl ? `
+              <div class="w-full h-28 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden">
+                <img src="${item.thumbnailUrl}" class="w-full h-full object-cover">
+              </div>
+            ` : ''}
+            <div class="text-xs">
+              <p class="font-bold text-slate-900 truncate" title="${item.fileName}">${item.fileName}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${item.dateTakenFormatted}</p>
+              <div class="mt-1 font-mono text-[11px] font-semibold text-brand-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100 inline-block">
+                ${item.lat}, ${item.lng}
+              </div>
+            </div>
+            <div class="pt-1 flex items-center gap-1.5">
+              <a href="${item.googleMapsUrl}" target="_blank" rel="noopener" class="flex-1 text-center text-[11px] font-medium py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors">
+                <i class="fa-solid fa-map-location-dot mr-1"></i>Google Maps
+              </a>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markersGroup.addLayer(marker);
+      });
+    }
+
+    // Auto-fit map view to contain all GPS markers
+    function fitMapToBounds() {
+      const gpsItems = extractedItems.filter(i => i.hasGps);
+      if (gpsItems.length === 0) return;
+
+      const bounds = L.latLngBounds(gpsItems.map(i => [i.lat, i.lng]));
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+    }
+
+    // Locate single item on Map (Fly and open popup)
+    function locateItemOnMap(itemId) {
+      const item = extractedItems.find(i => i.id === itemId);
+      if (!item || !item.hasGps) return;
+
+      if (window.innerWidth < 1024) {
+        setMobileTab('map');
+      }
+
+      mapPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      map.flyTo([item.lat, item.lng], 16, { duration: 1.2 });
+
+      markersGroup.eachLayer(layer => {
+        if (layer.options && layer.options.itemId === itemId) {
+          setTimeout(() => {
+            layer.openPopup();
+          }, 1200);
+        }
+      });
+    }
+
+    // Delete Single Item
+    function deleteSingleItem(itemId) {
+      extractedItems = extractedItems.filter(i => i.id !== itemId);
+      renderDashboard();
+      showToast('ลบรายการเรียบร้อยแล้ว', 'info');
+
+      if (extractedItems.length === 0) {
+        dashboardSection.classList.add('hidden');
+      }
+    }
+
+    // Clear All Items
+    function clearAllData() {
+      if (extractedItems.length === 0) return;
+      if (confirm('คุณต้องการล้างข้อมูลทั้งหมดหรือไม่?')) {
+        extractedItems = [];
+        renderDashboard();
+        dashboardSection.classList.add('hidden');
+        showToast('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว', 'info');
+      }
+    }
+
+    // Mobile View Toggle
+    function setMobileTab(tab) {
+      if (tab === 'map') {
+        mapPanel.classList.remove('hidden');
+        tablePanel.classList.add('hidden');
+        tabBtnMap.classList.add('bg-white', 'shadow-sm', 'text-slate-700');
+        tabBtnMap.classList.remove('text-slate-600');
+        tabBtnTable.classList.remove('bg-white', 'shadow-sm', 'text-slate-700');
+        tabBtnTable.classList.add('text-slate-600');
+        setTimeout(() => map.invalidateSize(), 200);
+      } else {
+        tablePanel.classList.remove('hidden');
+        tablePanel.classList.add('flex');
+        mapPanel.classList.add('hidden');
+        tabBtnTable.classList.add('bg-white', 'shadow-sm', 'text-slate-700');
+        tabBtnTable.classList.remove('text-slate-600');
+        tabBtnMap.classList.remove('bg-white', 'shadow-sm', 'text-slate-700');
+        tabBtnMap.classList.add('text-slate-600');
+      }
+    }
+
+    // Open Full Modal
+    function openModal(item) {
+      activeModalItem = item;
+      modalFileName.innerText = item.fileName;
+      modalFileSize.innerText = item.fileSize;
+      modalDateTaken.innerText = item.dateTakenFormatted;
+      modalCoords.innerText = item.fullCoords;
+
+      if (item.thumbnailUrl) {
+        modalImage.src = item.thumbnailUrl;
+        modalImage.classList.remove('hidden');
+      } else {
+        modalImage.classList.add('hidden');
+      }
+
+      if (item.hasGps) {
+        modalGmapsBtn.href = item.googleMapsUrl;
+        modalGmapsBtn.classList.remove('hidden');
+        modalLocateBtn.classList.remove('hidden');
+      } else {
+        modalGmapsBtn.classList.add('hidden');
+        modalLocateBtn.classList.add('hidden');
+      }
+
+      imageModal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      imageModal.classList.add('hidden');
+      activeModalItem = null;
+    }
+
+    // Export CSV Function (UTF-8 BOM for Thai Excel Support)
+    function exportToCsv() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับส่งออก', 'warning');
+        return;
+      }
+
+      const headers = ['File Name', 'Latitude', 'Longitude', 'Full Coordinates', 'Date Taken', 'File Size', 'Google Maps Link'];
+      
+      const rows = extractedItems.map(item => {
+        return [
+          `"${item.fileName.replace(/"/g, '""')}"`,
+          item.lat !== null ? item.lat : '',
+          item.lng !== null ? item.lng : '',
+          `"${item.fullCoords}"`,
+          `"${item.dateTakenFormatted}"`,
+          `"${item.fileSize}"`,
+          `"${item.googleMapsUrl}"`
+        ];
+      });
+
+      const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GPS_Photo_Coordinates_${timestamp}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('ส่งออกไฟล์ CSV (UTF-8 BOM) เรียบร้อยแล้ว', 'success');
+    }
+
+    // Toast Notification System
+    function showToast(msg, type = 'success') {
+      const toast = document.getElementById('toast');
+      const toastMessage = document.getElementById('toastMessage');
+      const toastIcon = document.getElementById('toastIcon');
+
+      toastMessage.innerText = msg;
+
+      if (type === 'success') {
+        toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+      } else if (type === 'warning') {
+        toastIcon.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-lg';
+      } else if (type === 'info') {
+        toastIcon.className = 'fa-solid fa-circle-info text-sky-400 text-lg';
+      }
+
+      toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
