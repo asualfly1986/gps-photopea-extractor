@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>GPS Photo EXIF Extractor & Map Visualizer</title>
   
   <!-- Tailwind CSS -->
@@ -179,9 +182,9 @@
       </div>
 
       <!-- Hidden Inputs -->
-      <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
-      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
-      <input type="file" id="projectInput" accept=".json" class="hidden">
+      <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff" class="hidden">
+      <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff" class="hidden">
+      <input type="file" id="projectInput" accept=".json,application/json" class="hidden">
     </section>
 
     <!-- Progress Bar -->
@@ -815,19 +818,33 @@
     // Event Listeners Setup
     function setupEventListeners() {
       // Button Triggers for File Input
-      btnSelectFiles.addEventListener('click', () => fileInput.click());
-      btnSelectFolder.addEventListener('click', () => folderInput.click());
-      btnLoadProject.addEventListener('click', () => projectInput.click());
-      dropzone.addEventListener('click', () => fileInput.click());
+      btnSelectFiles.addEventListener('click', (e) => {
+        e.preventDefault();
+        fileInput.value = '';
+        fileInput.click();
+      });
+
+      btnSelectFolder.addEventListener('click', (e) => {
+        e.preventDefault();
+        folderInput.value = '';
+        folderInput.click();
+      });
+
+      btnLoadProject.addEventListener('click', (e) => {
+        e.preventDefault();
+        projectInput.value = '';
+        projectInput.click();
+      });
+
+      dropzone.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        fileInput.value = '';
+        fileInput.click();
+      });
 
       // Map Controls
       mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
       btnLocateUser.addEventListener('click', locateCurrentUser);
-
-      // File Selection Reset on Click
-      fileInput.addEventListener('click', () => { fileInput.value = ''; });
-      folderInput.addEventListener('click', () => { folderInput.value = ''; });
-      projectInput.addEventListener('click', () => { projectInput.value = ''; });
 
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
