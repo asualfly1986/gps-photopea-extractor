@@ -359,6 +359,7 @@
                     <th class="py-3 px-3">ชื่อไฟล์ / วันที่</th>
                     <th class="py-3 px-3">พิกัด GPS</th>
                     <th class="py-3 px-3 text-center">สถานะ</th>
+                    <th class="py-3 px-3 text-center">พาหนะ</th>
                     <th class="py-3 px-3 text-right">จัดการ</th>
                   </tr>
                 </thead>
@@ -1144,7 +1145,8 @@
             fullCoords: item.fullCoords,
             dateTakenFormatted: item.dateTakenFormatted,
             googleMapsUrl: item.googleMapsUrl,
-            status: item.status || 'pending'
+            status: item.status || 'pending',
+            vehicle: item.vehicle || 'คนปีนตัด'
           });
         }
       } catch (err) {
@@ -1161,7 +1163,10 @@
           const request = store.getAll();
           request.onsuccess = () => {
             const results = request.result || [];
-            results.forEach(i => { if (!i.status) i.status = 'pending'; });
+            results.forEach(i => {
+              if (!i.status) i.status = 'pending';
+              if (!i.vehicle) i.vehicle = 'คนปีนตัด';
+            });
             resolve(results);
           };
           request.onerror = () => resolve([]);
@@ -1204,7 +1209,8 @@
           fullCoords: item.fullCoords,
           dateTakenFormatted: item.dateTakenFormatted,
           googleMapsUrl: item.googleMapsUrl,
-          status: item.status || 'pending'
+          status: item.status || 'pending',
+          vehicle: item.vehicle || 'คนปีนตัด'
         }))
       };
 
@@ -1249,115 +1255,6 @@
       };
       reader.readAsText(file);
     }
-
-    // Helper: Clean file name by stripping any lat_lng_ or NoGPS_ coordinate prefixes
-    function getCleanFileName(fileName) {
-      if (!fileName) return '';
-      return String(fileName)
-        .replace(/^STAMPED_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
-        .replace(/^STAMP_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
-        .replace(/^(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '');
-    }
-
-    // Process a single image file for EXIF and Thumbnail
-    async function processSingleFile(file) {
-      const id = 'img_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
-      const ext = file.name.split('.').pop().toLowerCase();
-      const isHeic = (ext === 'heic' || ext === 'heif');
-      const cleanFileName = getCleanFileName(file.name);
-
-      let lat = null;
-      let lng = null;
-      let dateTaken = null;
-      let hasGps = false;
-      let thumbnailUrl = null;
-
-      // 1. Extract EXIF via exifr library
-      try {
-        if (window.exifr) {
-          let gpsData = await exifr.gps(file);
-          if (!gpsData || typeof gpsData.latitude !== 'number') {
-            const parsed = await exifr.parse(file, { gps: true, tiff: true, xmp: true, rev: true });
-            if (parsed && typeof parsed.latitude === 'number' && typeof parsed.longitude === 'number') {
-              gpsData = { latitude: parsed.latitude, longitude: parsed.longitude };
-            }
-          }
-
-          if (gpsData && typeof gpsData.latitude === 'number' && typeof gpsData.longitude === 'number') {
-            lat = Number(gpsData.latitude.toFixed(6));
-            lng = Number(gpsData.longitude.toFixed(6));
-            hasGps = true;
-          }
-
-          const exifData = await exifr.parse(file, ['DateTimeOriginal', 'CreateDate', 'ModifyDate']);
-          if (exifData) {
-            dateTaken = exifData.DateTimeOriginal || exifData.CreateDate || exifData.ModifyDate || file.lastModifiedDate;
-          }
-        }
-      } catch (exifErr) {
-        console.warn('EXIF parsing failed for:', file.name, exifErr);
-      }
-
-      if (!dateTaken) {
-        dateTaken = file.lastModified ? new Date(file.lastModified) : new Date();
-      }
-
-      // 2. Generate Thumbnail URL
-      if (isHeic) {
-        try {
-          if (window.heic2any) {
-            const convertedBlob = await heic2any({
-              blob: file,
-              toType: 'image/jpeg',
-              quality: 0.4
-            });
-            const blobObj = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-            thumbnailUrl = URL.createObjectURL(blobObj);
-          } else {
-            thumbnailUrl = null;
-          }
-        } catch (heicErr) {
-          console.warn('HEIC preview conversion failed:', file.name);
-          thumbnailUrl = null;
-        }
-      } else {
-        thumbnailUrl = URL.createObjectURL(file);
-      }
-
-      const formattedDate = formatDate(dateTaken);
-      const fullCoords = hasGps ? `${lat}, ${lng}` : 'ไม่มีข้อมูล GPS';
-      const googleMapsUrl = hasGps ? `https://www.google.com/maps?q=${lat},${lng}` : '#';
-
-      return {
-        id,
-        file,
-        fileName: cleanFileName,
-        rawFileName: file.name,
-        fileSize: formatBytes(file.size),
-        fileSizeBytes: file.size,
-        thumbnailUrl,
-        isHeic,
-        hasGps,
-        lat,
-        lng,
-        fullCoords,
-        dateTakenFormatted: formattedDate,
-        googleMapsUrl,
-        status: 'pending'
-      };
-    }
-
-    // Update Progress Bar UI
-    function updateProgress(current, total, gpsCount) {
-      const percent = Math.round((current / total) * 100);
-      progressBar.style.width = `${percent}%`;
-      progressPercentText.innerText = `${percent}%`;
-      progressStatusText.innerText = `กำลังสแกนรูปภาพ (${current} / ${total})...`;
-      progressCountText.innerText = `สแกนไปแล้ว ${current} จาก ${total} รูป`;
-      progressGpsCountText.innerHTML = `<i class="fa-solid fa-location-dot mr-1"></i>พบพิกัด: ${gpsCount} รูป`;
-    }
-
-    // Render Dashboard (Stats, Map, Table)
     function renderDashboard() {
       const query = searchInput.value.trim().toLowerCase();
       const filter = filterSelect.value;
@@ -1372,7 +1269,8 @@
           const matchName = item.fileName.toLowerCase().includes(query);
           const matchDate = item.dateTakenFormatted.toLowerCase().includes(query);
           const matchCoords = item.fullCoords.toLowerCase().includes(query);
-          return matchName || matchDate || matchCoords;
+          const matchVehicle = item.vehicle ? item.vehicle.toLowerCase().includes(query) : false;
+          return matchName || matchDate || matchCoords || matchVehicle;
         }
 
         return true;
@@ -1399,6 +1297,16 @@
       await saveToDB(extractedItems);
       renderDashboard();
       showToast(`ปรับสถานะเป็น "${newStatus === 'completed' ? 'แล้วเสร็จ' : 'รอแก้ไข'}" เรียบร้อยแล้ว`, 'success');
+    }
+
+    // Update Single Item Vehicle
+    async function updateItemVehicle(itemId, newVehicle) {
+      const item = extractedItems.find(i => i.id === itemId);
+      if (!item) return;
+      item.vehicle = newVehicle;
+      await saveToDB(extractedItems);
+      renderDashboard();
+      showToast(`ปรับพาหนะเป็น "${newVehicle}" เรียบร้อยแล้ว`, 'success');
     }
 
     // Render Data Table Rows
@@ -1493,6 +1401,26 @@
         });
         tdStatus.appendChild(selectElem);
 
+        // Vehicle Column
+        const tdVehicle = document.createElement('td');
+        tdVehicle.className = 'py-2.5 px-2 text-center whitespace-nowrap';
+        const vVal = item.vehicle || 'คนปีนตัด';
+        const vSelectElem = document.createElement('select');
+        vSelectElem.className = 'text-[11px] font-semibold rounded-lg px-2 py-1 border transition-colors cursor-pointer bg-slate-50 text-slate-700 border-slate-300 hover:bg-slate-100';
+        vSelectElem.innerHTML = `
+          <option value="คนปีนตัด" ${vVal === 'คนปีนตัด' ? 'selected' : ''}>🧗‍♂️ คนปีนตัด</option>
+          <option value="รถกระเช้า" ${vVal === 'รถกระเช้า' ? 'selected' : ''}>🚜 รถกระเช้า</option>
+          <option value="รถกระเช้าHotline" ${vVal === 'รถกระเช้าHotline' ? 'selected' : ''}>⚡ รถกระเช้าHotline</option>
+          <option value="รถเครน" ${vVal === 'รถเครน' ? 'selected' : ''}>🏗️ รถเครน</option>
+          <option value="รถเครนใหญ่" ${vVal === 'รถเครนใหญ่' ? 'selected' : ''}>🚛 รถเครนใหญ่</option>
+        `;
+        vSelectElem.addEventListener('click', (e) => e.stopPropagation());
+        vSelectElem.addEventListener('change', (e) => {
+          e.stopPropagation();
+          updateItemVehicle(item.id, e.target.value);
+        });
+        tdVehicle.appendChild(vSelectElem);
+
         // Actions Column
         const tdActions = document.createElement('td');
         tdActions.className = 'py-2.5 px-3 text-right space-x-1 whitespace-nowrap';
@@ -1524,6 +1452,126 @@
           copyBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             const coordsStr = copyBtn.getAttribute('data-coords');
+            navigator.clipboard.writeText(coordsStr);
+            showToast(`คัดลอกพิกัด ${coordsStr} แล้ว`, 'success');
+          });
+        }
+
+        const locateBtn = tdActions.querySelector('.btn-locate');
+        if (locateBtn) {
+          locateBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            locateItemOnMap(item.id);
+          });
+        }
+
+        const stampBtn = tdActions.querySelector('.btn-stamp-download');
+        if (stampBtn) {
+          stampBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            downloadSingleStampedImage(item);
+          });
+        }
+
+        const deleteBtn = tdActions.querySelector('.btn-delete');
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteSingleItem(item.id);
+          });
+        }
+
+        tr.appendChild(tdThumb);
+        tr.appendChild(tdInfo);
+        tr.appendChild(tdGps);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdVehicle);
+        tr.appendChild(tdActions);
+        tableBody.appendChild(tr);
+      });
+    }
+
+    // Render Markers on Leaflet Map (Red Pin = Pending, Green Pin with Checkmark = Completed)
+    function renderMapMarkers(items) {
+      if (!markersGroup) return;
+
+      markersGroup.clearLayers();
+
+      const gpsItems = items.filter(i => i.hasGps);
+
+      gpsItems.forEach(item => {
+        const isDone = item.status === 'completed';
+        const vVal = item.vehicle || 'คนปีนตัด';
+
+        const customIcon = L.divIcon({
+          className: isDone ? 'custom-green-pin-marker' : 'custom-red-pin-marker',
+          html: isDone ? `
+            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-green-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
+                <i class="fa-solid fa-check text-xs font-bold"></i>
+              </div>
+              <div class="w-2.5 h-2.5 bg-green-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
+            </div>
+          ` : `
+            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
+                <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-inner">
+                  <i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i>
+                </div>
+              </div>
+              <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
+            </div>
+          `,
+          iconSize: [32, 38],
+          iconAnchor: [16, 38],
+          popupAnchor: [0, -38]
+        });
+
+        const marker = L.marker([item.lat, item.lng], { icon: customIcon, itemId: item.id });
+
+        const popupContent = `
+          <div class="p-2 max-w-[220px] text-slate-800 space-y-2">
+            ${item.thumbnailUrl ? `
+              <div class="w-full h-28 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden">
+                <img src="${item.thumbnailUrl}" class="w-full h-full object-cover">
+              </div>
+            ` : ''}
+            <div class="text-xs">
+              <p class="font-bold text-slate-900 truncate" title="${item.fileName}">${item.fileName}</p>
+              <p class="text-[11px] text-slate-500 mt-0.5">${item.dateTakenFormatted}</p>
+              <div class="mt-1 font-mono text-[11px] font-semibold text-brand-600 bg-sky-50 px-2 py-0.5 rounded border border-sky-100 inline-block">
+                ${item.lat}, ${item.lng}
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+              <span class="text-[11px] font-bold text-slate-500">สถานะ:</span>
+              <select onchange="updateItemStatus('${item.id}', this.value)" class="text-[10px] font-bold rounded px-1.5 py-0.5 border cursor-pointer ${isDone ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-rose-50 text-rose-700 border-rose-300'}">
+                <option value="pending" ${!isDone ? 'selected' : ''}>⚡ รอแก้ไข</option>
+                <option value="completed" ${isDone ? 'selected' : ''}>✅ แล้วเสร็จ</option>
+              </select>
+            </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[11px] font-bold text-slate-500">พาหนะ:</span>
+              <select onchange="updateItemVehicle('${item.id}', this.value)" class="text-[10px] font-bold rounded px-1.5 py-0.5 border cursor-pointer bg-slate-50 text-slate-700 border-slate-300">
+                <option value="คนปีนตัด" ${vVal === 'คนปีนตัด' ? 'selected' : ''}>🧗‍♂️ คนปีนตัด</option>
+                <option value="รถกระเช้า" ${vVal === 'รถกระเช้า' ? 'selected' : ''}>🚜 รถกระเช้า</option>
+                <option value="รถกระเช้าHotline" ${vVal === 'รถกระเช้าHotline' ? 'selected' : ''}>⚡ รถกระเช้าHotline</option>
+                <option value="รถเครน" ${vVal === 'รถเครน' ? 'selected' : ''}>🏗️ รถเครน</option>
+                <option value="รถเครนใหญ่" ${vVal === 'รถเครนใหญ่' ? 'selected' : ''}>🚛 รถเครนใหญ่</option>
+              </select>
+            </div>
+            <div class="pt-1 flex items-center gap-1.5">
+              <a href="${item.googleMapsUrl}" target="_blank" rel="noopener" class="flex-1 text-center text-[11px] font-medium py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors">
+                <i class="fa-solid fa-map-location-dot mr-1"></i>Google Maps
+              </a>
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+        markersGroup.addLayer(marker);
+      });
+    }coords');
             navigator.clipboard.writeText(coordsStr);
             showToast(`คัดลอกพิกัด ${coordsStr} แล้ว`, 'success');
           });
@@ -2098,7 +2146,8 @@
             item.fileName,
             item.hasGps ? `${item.lat}, ${item.lng}` : 'No GPS',
             item.dateTakenFormatted,
-            item.status === 'completed' ? 'Completed' : 'Pending'
+            item.status === 'completed' ? 'Completed' : 'Pending',
+            item.vehicle || 'คนปีนตัด'
           ]);
         }
 
@@ -2106,17 +2155,18 @@
           startY: 25,
           margin: { top: 25, bottom: 24, left: 14, right: 14 },
           rowPageBreak: 'avoid',
-          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Status']],
+          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Status', 'Vehicle']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
           bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
             0: { cellWidth: 26 }, // Photo column width
-            1: { cellWidth: 50 },
-            2: { cellWidth: 42 },
-            3: { cellWidth: 40 },
-            4: { cellWidth: 24, halign: 'center' }
+            1: { cellWidth: 42 },
+            2: { cellWidth: 38 },
+            3: { cellWidth: 32 },
+            4: { cellWidth: 22, halign: 'center' },
+            5: { cellWidth: 22, halign: 'center' }
           },
           didParseCell: function(data) {
             if (data.section === 'body' && data.column.index === 4) {
@@ -2210,6 +2260,8 @@
             dateTakenFormatted: item.dateTakenFormatted,
             fileSize: item.fileSize,
             googleMapsUrl: item.googleMapsUrl,
+            status: item.status || 'pending',
+            vehicle: item.vehicle || 'คนปีนตัด',
             base64: base64 || ''
           });
           if (i % 3 === 0) await new Promise(r => setTimeout(r, 10));
@@ -2282,13 +2334,14 @@
       <span class="text-[11px] text-slate-500 font-normal">แตะรูปเพื่อดูภาพขยาย</span>
     </div>
     <div class="table-scroll">
-      <table class="w-full text-left text-xs border-collapse min-w-[650px]">
+      <table class="w-full text-left text-xs border-collapse min-w-[700px]">
         <thead class="bg-slate-50 text-slate-600 font-bold uppercase border-b border-slate-200">
           <tr>
             <th class="p-2.5">รูปภาพ</th>
             <th class="p-2.5">ชื่อไฟล์</th>
             <th class="p-2.5">พิกัด GPS</th>
             <th class="p-2.5 text-center">สถานะ</th>
+            <th class="p-2.5 text-center">พาหนะ</th>
             <th class="p-2.5">วันที่ถ่ายภาพ</th>
             <th class="p-2.5">ขนาดไฟล์</th>
             <th class="p-2.5 text-right">Google Maps</th>
@@ -2308,6 +2361,9 @@
                 ${item.status === 'completed' 
                   ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700"><i class="fa-solid fa-check mr-1"></i>แล้วเสร็จ</span>` 
                   : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-bolt mr-1"></i>รอแก้ไข</span>`}
+              </td>
+              <td class="p-2.5 text-center whitespace-nowrap">
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">${escapeXml(item.vehicle || 'คนปีนตัด')}</span>
               </td>
               <td class="p-2.5 text-slate-600 whitespace-nowrap">${item.dateTakenFormatted}</td>
               <td class="p-2.5 text-slate-500 whitespace-nowrap">${item.fileSize}</td>
@@ -2396,6 +2452,10 @@
               <p class="text-[11px] font-mono font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block">\${item.lat}, \${item.lng}</p>
               <span class="text-[10px] font-bold px-1.5 py-0.5 rounded \${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">\${isDone ? '✅ แล้วเสร็จ' : '⚡ รอแก้ไข'}</span>
             </div>
+            <div class="flex items-center justify-between pt-1">
+              <span class="text-[10px] font-bold text-slate-500">พาหนะ:</span>
+              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">\${item.vehicle || 'คนปีนตัด'}</span>
+            </div>
           </div>
         \`;
         marker.bindPopup(popupHtml);
@@ -2466,7 +2526,7 @@
         const worksheet = workbook.addWorksheet('GPS Photo Data');
 
         // Title Header Banner
-        worksheet.mergeCells('A1:G1');
+        worksheet.mergeCells('A1:I1');
         const titleCell = worksheet.getCell('A1');
         titleCell.value = 'รายงานข้อมูลรูปภาพและพิกัด GPS (GPS Photo EXIF Extraction Report)';
         titleCell.font = { name: 'Prompt', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -2475,7 +2535,7 @@
         worksheet.getRow(1).height = 32;
 
         // Table Column Headers
-        const headers = ['รูปภาพ (Photo)', 'ชื่อไฟล์ (File Name)', 'Latitude', 'Longitude', 'พิกัดรวม (Coordinates)', 'วันที่ถ่ายภาพ (Date Taken)', 'Google Maps Link'];
+        const headers = ['รูปภาพ (Photo)', 'ชื่อไฟล์ (File Name)', 'Latitude', 'Longitude', 'พิกัดรวม (Coordinates)', 'สถานะ (Status)', 'พาหนะ (Vehicle)', 'วันที่ถ่ายภาพ (Date Taken)', 'Google Maps Link'];
         worksheet.addRow(headers);
         const headerRow = worksheet.getRow(2);
         headerRow.height = 24;
@@ -2488,6 +2548,8 @@
           { width: 14 }, // Lat
           { width: 14 }, // Lng
           { width: 28 }, // Full Coords
+          { width: 16 }, // Status
+          { width: 20 }, // Vehicle
           { width: 22 }, // Date
           { width: 45 }  // Gmaps
         ];
@@ -2502,6 +2564,8 @@
             item.lat || '',
             item.lng || '',
             item.fullCoords,
+            item.status === 'completed' ? 'แล้วเสร็จ' : 'รอแก้ไข',
+            item.vehicle || 'คนปีนตัด',
             item.dateTakenFormatted,
             item.googleMapsUrl
           ]);
@@ -2563,13 +2627,15 @@
         return;
       }
 
-      const headers = ['Name', 'Latitude', 'Longitude', 'Date', 'File_Size', 'Google_Maps_Link'];
+      const headers = ['Name', 'Latitude', 'Longitude', 'Status', 'Vehicle', 'Date', 'File_Size', 'Google_Maps_Link'];
       
       const rows = gpsItems.map(item => {
         return [
           `"${item.fileName.replace(/"/g, '""')}"`,
           item.lat,
           item.lng,
+          `"${item.status === 'completed' ? 'แล้วเสร็จ' : 'รอแก้ไข'}"`,
+          `"${item.vehicle || 'คนปีนตัด'}"`,
           `"${item.dateTakenFormatted}"`,
           `"${item.fileSize}"`,
           `"${item.googleMapsUrl}"`
@@ -2950,7 +3016,7 @@
         return;
       }
 
-      const headers = ['File Name', 'Latitude', 'Longitude', 'Full Coordinates', 'Date Taken', 'File Size', 'Google Maps Link'];
+      const headers = ['File Name', 'Latitude', 'Longitude', 'Full Coordinates', 'Status', 'Vehicle', 'Date Taken', 'File Size', 'Google Maps Link'];
       
       const rows = extractedItems.map(item => {
         return [
@@ -2958,6 +3024,8 @@
           item.lat !== null ? item.lat : '',
           item.lng !== null ? item.lng : '',
           `"${item.fullCoords}"`,
+          `"${item.status === 'completed' ? 'แล้วเสร็จ' : 'รอแก้ไข'}"`,
+          `"${item.vehicle || 'คนปีนตัด'}"`,
           `"${item.dateTakenFormatted}"`,
           `"${item.fileSize}"`,
           `"${item.googleMapsUrl}"`
