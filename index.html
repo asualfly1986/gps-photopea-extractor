@@ -1641,6 +1641,81 @@
       showToast(`ดาวน์โหลดไฟล์ KML เรียบร้อยแล้ว (${gpsItems.length} หมุดพิกัด)!`, 'success');
     }
 
+    // 📱 EXIF Orientation Correction Helper: Auto-rotates photos (iPhone/Android 90° CW orientation 6/8) so vertical photos render 100% UPRIGHT in PDF
+    async function getExifCorrectedImageDataUrl(item) {
+      return new Promise(async (resolve) => {
+        try {
+          let orientation = 1;
+          if (window.exifr && item.file) {
+            try {
+              const parsed = await exifr.orientation(item.file);
+              if (parsed) orientation = parsed;
+            } catch(e) {}
+          }
+
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            const srcW = img.naturalWidth || img.width;
+            const srcH = img.naturalHeight || img.height;
+
+            let canvasW = srcW;
+            let canvasH = srcH;
+
+            // Swap width & height if rotated 90/270 deg (Orientation 5, 6, 7, 8)
+            if (orientation >= 5 && orientation <= 8) {
+              canvasW = srcH;
+              canvasH = srcW;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasW;
+            canvas.height = canvasH;
+            const ctx = canvas.getContext('2d');
+
+            // Apply EXIF Rotation matrix
+            switch (orientation) {
+              case 2: ctx.transform(-1, 0, 0, 1, canvasW, 0); break;
+              case 3: ctx.transform(-1, 0, 0, -1, canvasW, canvasH); break;
+              case 4: ctx.transform(1, 0, 0, -1, 0, canvasH); break;
+              case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
+              case 6: ctx.transform(0, 1, -1, 0, canvasW, 0); break; // 90° CW (iPhone Portrait photo)
+              case 7: ctx.transform(0, -1, -1, 0, canvasW, canvasH); break;
+              case 8: ctx.transform(0, -1, 1, 0, 0, canvasH); break; // 270° CW
+              default: break;
+            }
+
+            ctx.drawImage(img, 0, 0, srcW, srcH);
+
+            // Downscale to max 400px box for PDF cell speed & memory
+            const maxBox = 400;
+            let finalW = canvasW;
+            let finalH = canvasH;
+            if (finalW > maxBox || finalH > maxBox) {
+              const scale = Math.min(maxBox / finalW, maxBox / finalH);
+              finalW = Math.round(finalW * scale);
+              finalH = Math.round(finalH * scale);
+            }
+
+            const resCanvas = document.createElement('canvas');
+            resCanvas.width = finalW;
+            resCanvas.height = finalH;
+            const resCtx = resCanvas.getContext('2d');
+            resCtx.drawImage(canvas, 0, 0, finalW, finalH);
+
+            const dataUrl = resCanvas.toDataURL('image/jpeg', 0.88);
+            canvas.width = 0; canvas.height = 0;
+            resCanvas.width = 0; resCanvas.height = 0;
+            resolve({ dataUrl, width: finalW, height: finalH });
+          };
+          img.onerror = () => resolve(null);
+          img.src = item.thumbnailUrl || (item.file ? URL.createObjectURL(item.file) : '');
+        } catch(err) {
+          resolve(null);
+        }
+      });
+    }
+
     // 📄 Export Option 3: PDF Photo Report Generator
     async function exportPdfReport() {
       if (extractedItems.length === 0) {
@@ -1648,7 +1723,7 @@
         return;
       }
 
-      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด (กำลังประมวลผลสัดส่วนภาพแนวตั้ง)...', 'info');
+      showToast('กำลังสร้างรายงาน PDF สรุปรูปภาพและพิกัด (หมุนปรับทิศทางภาพแนวตั้งอัตโนมัติ)...', 'info');
 
       try {
         const { jsPDF } = window.jspdf;
@@ -1663,22 +1738,15 @@
         doc.setTextColor(100, 116, 139);
         doc.text(`Generated Date: ${formatDate(new Date())}   |   Total Photos: ${extractedItems.length}`, 14, 21);
 
-        // Pre-load images to calculate exact orientation and aspect ratio (Portrait vs Landscape)
+        // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Portrait)
         const loadedImages = {};
         for (let i = 0; i < extractedItems.length; i++) {
           const item = extractedItems[i];
-          if (item.thumbnailUrl) {
-            await new Promise((resolve) => {
-              const img = new Image();
-              img.crossOrigin = 'anonymous';
-              img.onload = () => {
-                loadedImages[item.id] = img;
-                resolve();
-              };
-              img.onerror = () => resolve();
-              img.src = item.thumbnailUrl;
-            });
+          const corrected = await getExifCorrectedImageDataUrl(item);
+          if (corrected) {
+            loadedImages[item.id] = corrected;
           }
+          if (i % 3 === 0) await new Promise(r => setTimeout(r, 10));
         }
 
         const tableData = [];
@@ -1695,14 +1763,14 @@
 
         doc.autoTable({
           startY: 25,
-          head: [['รูปภาพ (Photo)', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
+          head: [['Photo', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
-          bodyStyles: { fontSize: 8, minCellHeight: 20, verticalAlign: 'middle' },
+          bodyStyles: { fontSize: 8, minCellHeight: 24, verticalAlign: 'middle' },
           columnStyles: {
-            0: { cellWidth: 24 },
-            1: { cellWidth: 48 },
+            0: { cellWidth: 26 }, // Photo column width
+            1: { cellWidth: 46 },
             2: { cellWidth: 44 },
             3: { cellWidth: 44 },
             4: { cellWidth: 20 }
@@ -1710,30 +1778,32 @@
           didDrawCell: function(data) {
             if (data.section === 'body' && data.column.index === 0) {
               const item = extractedItems[data.row.index];
-              const loadedImg = item ? loadedImages[item.id] : null;
+              const imgObj = item ? loadedImages[item.id] : null;
 
-              if (loadedImg && loadedImg.naturalWidth && loadedImg.naturalHeight) {
+              if (imgObj && imgObj.dataUrl) {
                 try {
-                  const maxBox = 18; // Max box 18mm x 18mm inside 24mm x 20mm cell
-                  let drawW = maxBox;
-                  let drawH = maxBox;
+                  const maxW = 22; // 22mm max width inside 26mm cell
+                  const maxH = 22; // 22mm max height inside 24mm cell
+                  
+                  let drawW = maxW;
+                  let drawH = maxH;
 
-                  const aspect = loadedImg.naturalWidth / loadedImg.naturalHeight;
+                  const aspect = imgObj.width / imgObj.height;
 
                   if (aspect >= 1) {
                     // Landscape photo (แนวนอน)
-                    drawW = maxBox;
-                    drawH = maxBox / aspect;
+                    drawW = maxW;
+                    drawH = maxW / aspect;
                   } else {
-                    // Portrait photo (แนวตั้ง) -> Maintain true vertical aspect ratio!
-                    drawH = maxBox;
-                    drawW = maxBox * aspect;
+                    // Portrait photo (แนวตั้งตรงเป๊ะ!)
+                    drawH = maxH;
+                    drawW = maxH * aspect;
                   }
 
                   const offsetX = data.cell.x + (data.cell.width - drawW) / 2;
                   const offsetY = data.cell.y + (data.cell.height - drawH) / 2;
 
-                  doc.addImage(loadedImg, 'JPEG', offsetX, offsetY, drawW, drawH);
+                  doc.addImage(imgObj.dataUrl, 'JPEG', offsetX, offsetY, drawW, drawH);
                 } catch(e) {
                   console.warn('PDF image draw error:', e);
                 }
