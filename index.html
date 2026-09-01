@@ -674,7 +674,7 @@
       // Initialize OAuth 2.0 token client
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/photopicker.mediaitems.readonly https://www.googleapis.com/auth/photoslibrary.readonly',
+        scope: 'https://www.googleapis.com/auth/photoslibrary.readonly',
         callback: async (response) => {
           if (response.error) {
             showToast('การขอสิทธิ์ Google Photos ล้มเหลว: ' + response.error, 'warning');
