@@ -1501,8 +1501,8 @@
         let kmlPlacemarks = '';
         for (let i = 0; i < gpsItems.length; i++) {
           const item = gpsItems[i];
-          const safeFileName = item.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
-          const imagePathInZip = `images/img_${i}_${safeFileName}.jpg`;
+          const imgFileName = `img_${i}.jpg`;
+          const imagePathInZip = `files/${imgFileName}`;
 
           // Compress/downscale photo to 650px JPEG (quality 0.70) under 50KB to keep KMZ lightweight under 5MB for Google My Maps quota
           let resizedBase64 = await getResizedBase64(item, 650, 0.70);
@@ -1518,7 +1518,7 @@
             console.warn('Error adding image to KMZ:', item.fileName, e);
           }
 
-          // Use clean relative path "images/..." (Google My Maps requires relative paths instead of Base64 URIs!)
+          // Use "files/img_x.jpg" + ExtendedData gx_media_links for Google My Maps media gallery compatibility
           kmlPlacemarks += `
     <Placemark>
       <name>${escapeXml(item.fileName)}</name>
@@ -1536,6 +1536,11 @@
           </p>
         </div>
       ]]></description>
+      <ExtendedData>
+        <Data name="gx_media_links">
+          <value>${imagePathInZip}</value>
+        </Data>
+      </ExtendedData>
       <styleUrl>#photo-marker-style</styleUrl>
       <Point>
         <coordinates>${item.lng},${item.lat},0</coordinates>
@@ -1547,7 +1552,7 @@
         }
 
         const kmlDocument = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
   <Document>
     <name>GPS Photo Coordinates &amp; Photos</name>
     <description>ส่งออกโดย GPS Photo EXIF Extractor (Client-Side 100%)</description>
