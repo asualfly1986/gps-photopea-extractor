@@ -1641,16 +1641,29 @@
       showToast(`ดาวน์โหลดไฟล์ KML เรียบร้อยแล้ว (${gpsItems.length} หมุดพิกัด)!`, 'success');
     }
 
-    // 📱 EXIF Orientation Correction Helper: Auto-rotates photos (iPhone/Android 90° CW orientation 6/8) so vertical photos render 100% UPRIGHT in PDF
+    // 📱 EXIF Orientation Correction Helper: Rotates photos based on EXIF tag (Orientation 6/8 -> Upright Vertical)
     async function getExifCorrectedImageDataUrl(item) {
       return new Promise(async (resolve) => {
         try {
           let orientation = 1;
-          if (window.exifr && item.file) {
+          if (window.exifr) {
             try {
-              const parsed = await exifr.orientation(item.file);
-              if (parsed) orientation = parsed;
-            } catch(e) {}
+              let parsed = null;
+              if (item.file) {
+                parsed = await exifr.parse(item.file, { tiff: true, gps: false, xmp: false });
+              } else if (item.thumbnailUrl) {
+                const res = await fetch(item.thumbnailUrl);
+                const b = await res.blob();
+                parsed = await exifr.parse(b, { tiff: true, gps: false, xmp: false });
+              }
+              if (parsed && typeof parsed.Orientation === 'number') {
+                orientation = parsed.Orientation;
+              } else if (parsed && typeof parsed.orientation === 'number') {
+                orientation = parsed.orientation;
+              }
+            } catch(e) {
+              console.warn('Exifr parse error:', e);
+            }
           }
 
           const img = new Image();
@@ -1662,7 +1675,6 @@
             let canvasW = srcW;
             let canvasH = srcH;
 
-            // Swap width & height if rotated 90/270 deg (Orientation 5, 6, 7, 8)
             if (orientation >= 5 && orientation <= 8) {
               canvasW = srcH;
               canvasH = srcW;
@@ -1673,22 +1685,50 @@
             canvas.height = canvasH;
             const ctx = canvas.getContext('2d');
 
-            // Apply EXIF Rotation matrix
+            // Apply EXIF Rotation matrix using translate & rotate
             switch (orientation) {
-              case 2: ctx.transform(-1, 0, 0, 1, canvasW, 0); break;
-              case 3: ctx.transform(-1, 0, 0, -1, canvasW, canvasH); break;
-              case 4: ctx.transform(1, 0, 0, -1, 0, canvasH); break;
-              case 5: ctx.transform(0, 1, 1, 0, 0, 0); break;
-              case 6: ctx.transform(0, 1, -1, 0, canvasW, 0); break; // 90° CW (iPhone Portrait photo)
-              case 7: ctx.transform(0, -1, -1, 0, canvasW, canvasH); break;
-              case 8: ctx.transform(0, -1, 1, 0, 0, canvasH); break; // 270° CW
-              default: break;
+              case 2:
+                ctx.translate(canvasW, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(img, 0, 0);
+                break;
+              case 3:
+                ctx.translate(canvasW / 2, canvasH / 2);
+                ctx.rotate((180 * Math.PI) / 180);
+                ctx.drawImage(img, -srcW / 2, -srcH / 2);
+                break;
+              case 4:
+                ctx.translate(0, canvasH);
+                ctx.scale(1, -1);
+                ctx.drawImage(img, 0, 0);
+                break;
+              case 5:
+                ctx.rotate((90 * Math.PI) / 180);
+                ctx.scale(1, -1);
+                ctx.drawImage(img, 0, 0);
+                break;
+              case 6: // 90° Clockwise Rotation (Smartphone Portrait Photo)
+                ctx.translate(canvasW / 2, canvasH / 2);
+                ctx.rotate((90 * Math.PI) / 180);
+                ctx.drawImage(img, -srcW / 2, -srcH / 2);
+                break;
+              case 7:
+                ctx.rotate((-90 * Math.PI) / 180);
+                ctx.scale(1, -1);
+                ctx.drawImage(img, 0, 0);
+                break;
+              case 8: // 270° Clockwise Rotation (90° CCW)
+                ctx.translate(canvasW / 2, canvasH / 2);
+                ctx.rotate((-90 * Math.PI) / 180);
+                ctx.drawImage(img, -srcW / 2, -srcH / 2);
+                break;
+              default:
+                ctx.drawImage(img, 0, 0);
+                break;
             }
 
-            ctx.drawImage(img, 0, 0, srcW, srcH);
-
-            // Downscale to max 400px box for PDF cell speed & memory
-            const maxBox = 400;
+            // Downscale to max 450px box for PDF cell rendering
+            const maxBox = 450;
             let finalW = canvasW;
             let finalH = canvasH;
             if (finalW > maxBox || finalH > maxBox) {
@@ -1738,7 +1778,20 @@
         doc.setTextColor(100, 116, 139);
         doc.text(`Generated Date: ${formatDate(new Date())}   |   Total Photos: ${extractedItems.length}`, 14, 21);
 
-        // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Portrait)
+        // Generate Thai header image via Canvas for crisp PDF rendering
+        const headerCanvas = document.createElement('canvas');
+        headerCanvas.width = 140;
+        headerCanvas.height = 45;
+        const hCtx = headerCanvas.getContext('2d');
+        hCtx.fillStyle = '#0284c7';
+        hCtx.fillRect(0, 0, 140, 45);
+        hCtx.fillStyle = '#ffffff';
+        hCtx.font = 'bold 22px Prompt, sans-serif';
+        hCtx.textBaseline = 'middle';
+        hCtx.fillText('รูปภาพ', 12, 22);
+        const headerDataUrl = headerCanvas.toDataURL('image/png');
+
+        // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Vertical)
         const loadedImages = {};
         for (let i = 0; i < extractedItems.length; i++) {
           const item = extractedItems[i];
@@ -1763,7 +1816,7 @@
 
         doc.autoTable({
           startY: 25,
-          head: [['Photo', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
+          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
@@ -1776,6 +1829,13 @@
             4: { cellWidth: 20 }
           },
           didDrawCell: function(data) {
+            if (data.section === 'head' && data.column.index === 0) {
+              try {
+                // Render crisp Thai "รูปภาพ" header in cell
+                doc.addImage(headerDataUrl, 'PNG', data.cell.x + 1, data.cell.y + 1, 24, 7);
+              } catch(e) {}
+            }
+
             if (data.section === 'body' && data.column.index === 0) {
               const item = extractedItems[data.row.index];
               const imgObj = item ? loadedImages[item.id] : null;
