@@ -1504,7 +1504,7 @@
           const imgFileName = `img_${i}.jpg`;
           const imagePathInZip = `files/${imgFileName}`;
 
-          // Compress/downscale photo to 650px JPEG (quality 0.70) under 50KB to keep KMZ lightweight under 5MB for Google My Maps quota
+          // Compress/downscale photo to 650px JPEG (quality 0.70) under 50KB to keep KMZ lightweight
           let resizedBase64 = await getResizedBase64(item, 650, 0.70);
 
           try {
@@ -1518,29 +1518,21 @@
             console.warn('Error adding image to KMZ:', item.fileName, e);
           }
 
-          // Use "files/img_x.jpg" + ExtendedData gx_media_links for Google My Maps media gallery compatibility
+          // Clean KML Placemark without broken gx_media_links gallery tag
           kmlPlacemarks += `
     <Placemark>
       <name>${escapeXml(item.fileName)}</name>
       <description><![CDATA[
-        <div style="font-family: Arial, sans-serif; max-width: 320px; color: #1e293b;">
-          <h3 style="margin-top: 0; color: #0284c7;">${escapeXml(item.fileName)}</h3>
+        <div style="font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; line-height: 1.5;">
+          <h3 style="margin-top: 0; color: #0284c7; font-size: 15px;">${escapeXml(item.fileName)}</h3>
           <p style="margin: 4px 0;"><b>พิกัด GPS:</b> ${item.lat}, ${item.lng}</p>
           <p style="margin: 4px 0;"><b>วันที่ถ่ายภาพ:</b> ${escapeXml(item.dateTakenFormatted)}</p>
           <p style="margin: 4px 0;"><b>ขนาดไฟล์:</b> ${escapeXml(item.fileSize)}</p>
-          <div style="margin-top: 10px; text-align: center;">
-            <img src="${imagePathInZip}" style="max-width: 100%; max-height: 250px; border-radius: 8px; border: 1px solid #cbd5e1;" />
-          </div>
-          <p style="margin-top: 10px; text-align: right;">
-            <a href="${item.googleMapsUrl}" target="_blank" style="color: #059669; text-decoration: none; font-weight: bold;">เปิดใน Google Maps &#8599;</a>
+          <p style="margin-top: 10px;">
+            <a href="${item.googleMapsUrl}" target="_blank" style="display: inline-block; padding: 6px 14px; background-color: #0284c7; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px;">เปิดดูพิกัดบน Google Maps &#8599;</a>
           </p>
         </div>
       ]]></description>
-      <ExtendedData>
-        <Data name="gx_media_links">
-          <value>${imagePathInZip}</value>
-        </Data>
-      </ExtendedData>
       <styleUrl>#photo-marker-style</styleUrl>
       <Point>
         <coordinates>${item.lng},${item.lat},0</coordinates>
@@ -1552,7 +1544,7 @@
         }
 
         const kmlDocument = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<kml xmlns="http://www.opengis.net/kml/2.2">
   <Document>
     <name>GPS Photo Coordinates &amp; Photos</name>
     <description>ส่งออกโดย GPS Photo EXIF Extractor (Client-Side 100%)</description>
