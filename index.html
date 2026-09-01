@@ -2098,7 +2098,7 @@
             item.fileName,
             item.hasGps ? `${item.lat}, ${item.lng}` : 'No GPS',
             item.dateTakenFormatted,
-            item.fileSize
+            item.status === 'completed' ? 'Completed' : 'Pending'
           ]);
         }
 
@@ -2106,17 +2106,28 @@
           startY: 25,
           margin: { top: 25, bottom: 24, left: 14, right: 14 },
           rowPageBreak: 'avoid',
-          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Size']],
+          head: [['', 'File Name', 'GPS Coordinates', 'Date Taken', 'Status']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], textColor: 255, fontSize: 8.5, fontStyle: 'bold' },
           bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
             0: { cellWidth: 26 }, // Photo column width
-            1: { cellWidth: 46 },
-            2: { cellWidth: 44 },
-            3: { cellWidth: 44 },
-            4: { cellWidth: 20 }
+            1: { cellWidth: 50 },
+            2: { cellWidth: 42 },
+            3: { cellWidth: 40 },
+            4: { cellWidth: 24, halign: 'center' }
+          },
+          didParseCell: function(data) {
+            if (data.section === 'body' && data.column.index === 4) {
+              if (data.cell.raw === 'Completed') {
+                data.cell.styles.textColor = [16, 185, 129];
+                data.cell.styles.fontStyle = 'bold';
+              } else {
+                data.cell.styles.textColor = [225, 29, 72];
+                data.cell.styles.fontStyle = 'bold';
+              }
+            }
           },
           didDrawCell: function(data) {
             if (data.section === 'head' && data.column.index === 0) {
