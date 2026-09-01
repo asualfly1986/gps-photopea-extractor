@@ -666,9 +666,10 @@
 
     // Tile Layer Providers
     const tileProviders = {
-      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      osm: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
+        subdomains: 'abcd',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       }),
       satellite: L.layerGroup([
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -681,6 +682,7 @@
       ]),
       light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
+        subdomains: 'abcd',
         attribution: '&copy; OpenStreetMap &copy; CARTO'
       })
     };
@@ -2297,7 +2299,7 @@
       }, 150);
     }
 
-    // Locate single item on Map (Fly and open popup)
+    // Locate single item on Map (Instant zoom and open popup)
     function locateItemOnMap(itemId) {
       const item = extractedItems.find(i => i.id === itemId);
       if (!item || !item.hasGps) return;
@@ -2306,15 +2308,14 @@
         setMobileTab('map');
       }
 
-      mapPanel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      mapPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-      map.flyTo([item.lat, item.lng], 16, { duration: 1.2 });
+      map.setView([item.lat, item.lng], 17);
+      if (map) map.invalidateSize();
 
       markersGroup.eachLayer(layer => {
         if (layer.options && layer.options.itemId === itemId) {
-          setTimeout(() => {
-            layer.openPopup();
-          }, 1200);
+          layer.openPopup();
         }
       });
     }
