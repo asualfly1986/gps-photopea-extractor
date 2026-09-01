@@ -1031,11 +1031,21 @@
       folderInput.value = '';
     }
 
+    // Helper: Clean file name by stripping any lat_lng_ or NoGPS_ coordinate prefixes
+    function getCleanFileName(fileName) {
+      if (!fileName) return '';
+      return String(fileName)
+        .replace(/^STAMPED_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
+        .replace(/^STAMP_(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '')
+        .replace(/^(-?\d+(\.\d+)?_-?\d+(\.\d+)?|NoGPS)_/i, '');
+    }
+
     // Process a single image file for EXIF and Thumbnail
     async function processSingleFile(file) {
       const id = 'img_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
       const ext = file.name.split('.').pop().toLowerCase();
       const isHeic = (ext === 'heic' || ext === 'heif');
+      const cleanFileName = getCleanFileName(file.name);
 
       let lat = null;
       let lng = null;
@@ -1102,7 +1112,8 @@
       return {
         id,
         file,
-        fileName: file.name,
+        fileName: cleanFileName,
+        rawFileName: file.name,
         fileSize: formatBytes(file.size),
         fileSizeBytes: file.size,
         thumbnailUrl,
