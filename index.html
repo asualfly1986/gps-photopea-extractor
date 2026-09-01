@@ -21,9 +21,6 @@
   <!-- HEIC Converter (heic2any) -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
   <!-- Google Fonts: Prompt & Inter -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -99,13 +96,9 @@
       </div>
       
       <div class="flex items-center space-x-2">
-        <button id="btnOpenGoogleSettings" class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-white/10 hover:bg-white/20 text-sky-100 border border-sky-300/30 transition-colors cursor-pointer" title="ตั้งค่า Google Photos Client ID">
-          <i class="fa-brands fa-google mr-1.5 text-rose-400"></i>
-          <span>ตั้งค่า Google API</span>
-        </button>
-        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hidden sm:inline-flex">
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
           <span class="w-2 h-2 mr-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          Privacy First
+          Privacy First (Client-Side 100%)
         </span>
       </div>
     </div>
@@ -127,28 +120,22 @@
             อัปโหลดรูปภาพเพื่อดึงข้อมูลพิกัด <span class="font-medium text-slate-800">Latitude, Longitude</span> และวันเวลาถ่ายภาพ 
             รองรับไฟล์ <span class="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 text-xs font-mono font-semibold">.JPG</span>, 
             <span class="px-1.5 py-0.5 bg-slate-100 rounded text-slate-700 text-xs font-mono font-semibold">.PNG</span> และ 
-            <span class="px-1.5 py-0.5 bg-sky-50 text-sky-700 rounded text-xs font-mono font-semibold">.HEIC / .HEIF</span> จาก iPhone หรือดึงจาก <span class="px-1.5 py-0.5 bg-rose-50 text-rose-700 rounded text-xs font-semibold">Google Photos</span>
+            <span class="px-1.5 py-0.5 bg-sky-50 text-sky-700 rounded text-xs font-mono font-semibold">.HEIC / .HEIF</span> จาก iPhone และ Android
           </p>
         </div>
 
         <!-- Right Upload Buttons -->
         <div class="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
           <!-- Multi Files Button -->
-          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-medium shadow-md shadow-brand-500/20 transition-all cursor-pointer">
-            <i class="fa-solid fa-images mr-2 text-lg"></i>
+          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer">
+            <i class="fa-solid fa-images mr-2.5 text-lg"></i>
             <span>เลือกรูปภาพทั้งหมด</span>
           </button>
           
           <!-- Folder Upload Button -->
-          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-medium shadow-md shadow-slate-900/10 transition-all cursor-pointer">
-            <i class="fa-solid fa-folder-open mr-2 text-lg text-amber-400"></i>
+          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-semibold shadow-md shadow-slate-900/10 transition-all cursor-pointer">
+            <i class="fa-solid fa-folder-open mr-2.5 text-lg text-amber-400"></i>
             <span>เลือกทั้งโฟลเดอร์</span>
-          </button>
-
-          <!-- Google Photos Direct Picker Button -->
-          <button id="btnSelectGooglePhotos" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-medium shadow-sm transition-all cursor-pointer">
-            <i class="fa-brands fa-google mr-2 text-lg text-rose-500"></i>
-            <span>Google Photos</span>
           </button>
         </div>
       </div>
@@ -362,109 +349,6 @@
 
   </main>
 
-  <!-- Google Photos Native Gallery Modal -->
-  <div id="googlePhotosGalleryModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-4xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-      <!-- Modal Header -->
-      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
-        <div class="flex items-center space-x-2">
-          <i class="fa-brands fa-google text-rose-400 text-lg"></i>
-          <h3 class="text-sm font-bold">เลือกรูปภาพจาก Google Photos</h3>
-        </div>
-        <button id="btnCloseGoogleGalleryModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <div class="p-4 overflow-y-auto space-y-4 flex-1">
-        <div class="flex items-center justify-between text-xs text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
-          <span>คลิกเลือกรูปภาพที่คุณต้องการดึงพิกัด GPS:</span>
-          <button id="btnToggleSelectAllGoogle" class="text-brand-600 hover:text-brand-800 font-semibold underline">
-            เลือกทั้งหมด
-          </button>
-        </div>
-
-        <div id="googlePhotosLoading" class="hidden py-12 text-center text-slate-500 space-y-2">
-          <i class="fa-solid fa-spinner animate-spin text-3xl text-brand-600"></i>
-          <p class="text-sm font-medium">กำลังโหลดรูปภาพจาก Google Photos...</p>
-        </div>
-
-        <div id="googlePhotosGrid" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[55vh] overflow-y-auto p-1">
-          <!-- Dynamic Google Photo items -->
-        </div>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
-        <span id="googlePhotosSelectedCount" class="text-xs font-semibold text-slate-700">เลือกแล้ว 0 รูป</span>
-        <div class="flex items-center space-x-2">
-          <button id="btnCancelGoogleGallery" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium transition-colors">
-            ยกเลิก
-          </button>
-          <button id="btnImportSelectedGooglePhotos" class="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm">
-            <i class="fa-solid fa-cloud-arrow-down mr-1.5"></i>
-            นำเข้ารูปภาพที่เลือก
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Google Photos Client ID Configuration Modal -->
-  <div id="googleSettingsModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col">
-      <!-- Modal Header -->
-      <div class="p-4 bg-slate-900 text-white flex items-center justify-between">
-        <h3 class="text-sm font-bold flex items-center">
-          <i class="fa-brands fa-google text-rose-400 mr-2 text-lg"></i>
-          ตั้งค่า Google Photos API Client ID
-        </h3>
-        <button id="btnCloseGoogleModal" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors">
-          <i class="fa-solid fa-xmark text-lg"></i>
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <div class="p-5 space-y-4 text-xs text-slate-600">
-        <p class="leading-relaxed">
-          การดึงรูปภาพโดยตรงจาก Google Photos ต้องใช้ <strong class="text-slate-800">Google OAuth Client ID</strong> เพื่อเชื่อมต่อสิทธิ์กับ Google
-        </p>
-
-        <div class="space-y-1.5">
-          <label for="inputGoogleClientId" class="block font-semibold text-slate-700">Google Client ID:</label>
-          <input type="text" id="inputGoogleClientId" placeholder="xxxxxxxxx-xxxxxxxxxx.apps.googleusercontent.com" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 font-mono text-xs">
-          <p class="text-[11px] text-slate-400">ระบบจะบันทึก Client ID ไว้ในเบราว์เซอร์ของคุณอย่างปลอดภัย</p>
-        </div>
-
-        <!-- Instructions Box -->
-        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-          <p class="font-bold text-slate-700 flex items-center">
-            <i class="fa-solid fa-circle-info text-sky-500 mr-1.5"></i>
-            วิธีสร้าง Client ID ฟรี (Google Cloud Console):
-          </p>
-          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-600 leading-relaxed">
-            <li>ไปที่ <a href="https://console.cloud.google.com/" target="_blank" class="text-brand-600 underline font-semibold">Google Cloud Console</a> แล้วสร้าง Project ใหม่</li>
-            <li>ไปที่ <strong>APIs & Services > Credentials</strong></li>
-            <li>กด <strong>Create Credentials > OAuth client ID</strong> เลือกประเภท <strong>Web application</strong></li>
-            <li>ใส่ Origin ของคุณ (เช่น <code class="bg-slate-200 px-1 rounded">http://localhost</code> หรือ URL เว็บ) ใน Authorized JavaScript origins</li>
-            <li>คัดลอก Client ID ที่ได้มาวางในช่องด้านบน แล้วกดบันทึก</li>
-          </ol>
-        </div>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end space-x-2">
-        <button id="btnCancelGoogleModal" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-medium transition-colors">
-          ยกเลิก
-        </button>
-        <button id="btnSaveGoogleClientId" class="px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium transition-colors">
-          บันทึก Client ID
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Image Preview Modal -->
   <div id="imageModal" class="hidden fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-3xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -529,32 +413,12 @@
     let markersGroup = null;
     let activeModalItem = null;
 
-    // Google API State
-    let tokenClient = null;
-    let googleAccessToken = null;
-    let fetchedGoogleMediaItems = [];
-    let selectedGoogleMediaItemIds = new Set();
-
     // DOM Elements
     const fileInput = document.getElementById('fileInput');
     const folderInput = document.getElementById('folderInput');
     const btnSelectFiles = document.getElementById('btnSelectFiles');
     const btnSelectFolder = document.getElementById('btnSelectFolder');
-    const btnSelectGooglePhotos = document.getElementById('btnSelectGooglePhotos');
-    const btnOpenGoogleSettings = document.getElementById('btnOpenGoogleSettings');
     const dropzone = document.getElementById('dropzone');
-
-    const googleSettingsModal = document.getElementById('googleSettingsModal');
-    const btnCloseGoogleModal = document.getElementById('btnCloseGoogleModal');
-    const btnCancelGoogleModal = document.getElementById('btnCancelGoogleModal');
-    const btnSaveGoogleClientId = document.getElementById('btnSaveGoogleClientId');
-    const inputGoogleClientId = document.getElementById('inputGoogleClientId');
-
-    const googlePhotosGalleryModal = document.getElementById('googlePhotosGalleryModal');
-    const btnCloseGoogleGalleryModal = document.getElementById('btnCloseGoogleGalleryModal');
-    const btnCancelGoogleGallery = document.getElementById('btnCancelGoogleGallery');
-    const btnToggleSelectAllGoogle = document.getElementById('btnToggleSelectAllGoogle');
-    const btnImportSelectedGooglePhotos = document.getElementById('btnImportSelectedGooglePhotos');
 
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
@@ -596,7 +460,6 @@
     document.addEventListener('DOMContentLoaded', () => {
       initMap();
       setupEventListeners();
-      loadGoogleClientId();
     });
 
     // Initialize Leaflet Map
@@ -620,21 +483,6 @@
       btnSelectFiles.addEventListener('click', () => fileInput.click());
       btnSelectFolder.addEventListener('click', () => folderInput.click());
       dropzone.addEventListener('click', () => fileInput.click());
-
-      // Google Photos Buttons
-      btnSelectGooglePhotos.addEventListener('click', handleGooglePhotosClick);
-      btnOpenGoogleSettings.addEventListener('click', openGoogleSettingsModal);
-
-      // Google Settings Modal Handlers
-      btnCloseGoogleModal.addEventListener('click', closeGoogleSettingsModal);
-      btnCancelGoogleModal.addEventListener('click', closeGoogleSettingsModal);
-      btnSaveGoogleClientId.addEventListener('click', saveGoogleClientId);
-
-      // Google Gallery Modal Handlers
-      btnCloseGoogleGalleryModal.addEventListener('click', () => googlePhotosGalleryModal.classList.add('hidden'));
-      btnCancelGoogleGallery.addEventListener('click', () => googlePhotosGalleryModal.classList.add('hidden'));
-      btnToggleSelectAllGoogle.addEventListener('click', toggleSelectAllGooglePhotos);
-      btnImportSelectedGooglePhotos.addEventListener('click', importSelectedGooglePhotos);
 
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
@@ -688,215 +536,6 @@
           locateItemOnMap(activeModalItem.id);
         }
       });
-    }
-
-    // Google API Integration Handlers
-    function loadGoogleClientId() {
-      const storedId = localStorage.getItem('google_client_id');
-      if (storedId) {
-        inputGoogleClientId.value = storedId;
-      }
-    }
-
-    function openGoogleSettingsModal() {
-      loadGoogleClientId();
-      googleSettingsModal.classList.remove('hidden');
-    }
-
-    function closeGoogleSettingsModal() {
-      googleSettingsModal.classList.add('hidden');
-    }
-
-    function saveGoogleClientId() {
-      const val = inputGoogleClientId.value.trim();
-      if (!val) {
-        showToast('กรุณากรอก Google Client ID', 'warning');
-        return;
-      }
-      localStorage.setItem('google_client_id', val);
-      closeGoogleSettingsModal();
-      showToast('บันทึก Client ID เรียบร้อยแล้ว', 'success');
-    }
-
-    // Handle Google Photos Click
-    function handleGooglePhotosClick() {
-      const clientId = localStorage.getItem('google_client_id');
-      if (!clientId) {
-        openGoogleSettingsModal();
-        showToast('กรุณากรอก Google Client ID ก่อนเริ่มต้นใช้งาน', 'info');
-        return;
-      }
-
-      if (!window.google || !window.google.accounts) {
-        showToast('กำลังโหลด Google API... กรุณาลองใหม่อีกครั้งในครู่เดียว', 'warning');
-        return;
-      }
-
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: 'https://www.googleapis.com/auth/photoslibrary.readonly',
-        callback: async (response) => {
-          if (response.error) {
-            showToast('การขอสิทธิ์ Google Photos ล้มเหลว: ' + response.error, 'warning');
-            return;
-          }
-          googleAccessToken = response.access_token;
-          fetchGooglePhotosGallery();
-        },
-      });
-
-      if (googleAccessToken) {
-        fetchGooglePhotosGallery();
-      } else {
-        tokenClient.requestAccessToken({ prompt: 'consent' });
-      }
-    }
-
-    // Fetch Google Photos Gallery Native API
-    async function fetchGooglePhotosGallery() {
-      if (!googleAccessToken) return;
-
-      const modal = googlePhotosGalleryModal;
-      const loading = document.getElementById('googlePhotosLoading');
-      const grid = document.getElementById('googlePhotosGrid');
-
-      modal.classList.remove('hidden');
-      loading.classList.remove('hidden');
-      grid.innerHTML = '';
-      selectedGoogleMediaItemIds.clear();
-      updateGoogleGalleryUI();
-
-      try {
-        const res = await fetch('https://photoslibrary.googleapis.com/v1/mediaItems?pageSize=100', {
-          headers: { Authorization: `Bearer ${googleAccessToken}` }
-        });
-
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-        fetchedGoogleMediaItems = data.mediaItems || [];
-        loading.classList.add('hidden');
-
-        if (fetchedGoogleMediaItems.length === 0) {
-          grid.innerHTML = `
-            <div class="col-span-full py-8 px-4 text-center space-y-3">
-              <div class="w-12 h-12 rounded-full bg-rose-50 text-rose-500 mx-auto flex items-center justify-center text-xl">
-                <i class="fa-brands fa-google"></i>
-              </div>
-              <p class="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-                นโยบาย Google Photos API จำกัดการดึงข้อมูลรูปภาพผ่านคลาวด์บนมือถือ ท่านสามารถกดเลือกรูปภาพจากแอป Google Photos ในเครื่องได้โดยตรง
-              </p>
-              <div class="pt-2">
-                <button onclick="document.getElementById('googlePhotosGalleryModal').classList.add('hidden'); fileInput.click();" class="px-4 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl shadow-md transition-all">
-                  <i class="fa-solid fa-images mr-1.5"></i>
-                  กดเลือกรูปภาพจากเครื่อง / แอป Google Photos
-                </button>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        renderGooglePhotosGrid();
-
-      } catch (err) {
-        loading.classList.add('hidden');
-        console.error('Fetch Google Photos failed:', err);
-        showToast('ไม่สามารถดึงรูปภาพจาก Google Photos ได้: ' + err.message, 'warning');
-      }
-    }
-
-    // Render Google Photos Thumbnail Grid
-    function renderGooglePhotosGrid() {
-      const grid = document.getElementById('googlePhotosGrid');
-      grid.innerHTML = '';
-
-      fetchedGoogleMediaItems.forEach(item => {
-        const isSelected = selectedGoogleMediaItemIds.has(item.id);
-        const thumbUrl = `${item.baseUrl}=w250-h250-c`;
-
-        const card = document.createElement('div');
-        card.className = `relative bg-slate-100 rounded-xl overflow-hidden border ${isSelected ? 'border-brand-500 ring-2 ring-brand-500/20' : 'border-slate-200'} cursor-pointer group hover:border-brand-400 transition-all select-none`;
-
-        card.innerHTML = `
-          <div class="w-full h-28 bg-slate-200 relative overflow-hidden">
-            <img src="${thumbUrl}" alt="${item.filename}" class="w-full h-full object-cover">
-            <div class="absolute top-2 right-2 w-6 h-6 rounded-full ${isSelected ? 'bg-brand-600 text-white' : 'bg-slate-900/50 text-white/50 border border-white/60'} flex items-center justify-center text-xs transition-all">
-              <i class="fa-solid fa-check"></i>
-            </div>
-          </div>
-          <div class="p-2 text-[11px] font-medium text-slate-700 truncate" title="${item.filename}">
-            ${item.filename}
-          </div>
-        `;
-
-        card.addEventListener('click', () => {
-          if (selectedGoogleMediaItemIds.has(item.id)) {
-            selectedGoogleMediaItemIds.delete(item.id);
-          } else {
-            selectedGoogleMediaItemIds.add(item.id);
-          }
-          renderGooglePhotosGrid();
-          updateGoogleGalleryUI();
-        });
-
-        grid.appendChild(card);
-      });
-    }
-
-    function toggleSelectAllGooglePhotos() {
-      if (selectedGoogleMediaItemIds.size === fetchedGoogleMediaItems.length) {
-        selectedGoogleMediaItemIds.clear();
-      } else {
-        fetchedGoogleMediaItems.forEach(i => selectedGoogleMediaItemIds.add(i.id));
-      }
-      renderGooglePhotosGrid();
-      updateGoogleGalleryUI();
-    }
-
-    function updateGoogleGalleryUI() {
-      const count = selectedGoogleMediaItemIds.size;
-      document.getElementById('googlePhotosSelectedCount').innerText = `เลือกแล้ว ${count} รูป`;
-      btnImportSelectedGooglePhotos.disabled = count === 0;
-      btnToggleSelectAllGoogle.innerText = (count === fetchedGoogleMediaItems.length && count > 0) ? 'ยกเลิกการเลือกทั้งหมด' : 'เลือกทั้งหมด';
-    }
-
-    // Import Selected Google Photos
-    async function importSelectedGooglePhotos() {
-      if (selectedGoogleMediaItemIds.size === 0) return;
-
-      const selectedItems = fetchedGoogleMediaItems.filter(i => selectedGoogleMediaItemIds.has(i.id));
-      googlePhotosGalleryModal.classList.add('hidden');
-
-      progressContainer.classList.remove('hidden');
-      updateProgress(0, selectedItems.length, 0);
-      showToast(`กำลังดาวน์โหลดรูปภาพจาก Google Photos (${selectedItems.length} รูป)...`, 'info');
-
-      const downloadedFiles = [];
-
-      for (let i = 0; i < selectedItems.length; i++) {
-        const item = selectedItems[i];
-        try {
-          const photoUrl = `${item.baseUrl}=d`;
-          const fileName = item.filename || `google_photo_${i+1}.jpg`;
-
-          const blobRes = await fetch(photoUrl);
-          const blob = await blobRes.blob();
-          const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
-          downloadedFiles.push(file);
-        } catch (err) {
-          console.warn('Failed downloading Google Photo item:', item.filename, err);
-        }
-      }
-
-      if (downloadedFiles.length > 0) {
-        handleFilesSelected(downloadedFiles);
-      } else {
-        progressContainer.classList.add('hidden');
-        showToast('ไม่สามารถดาวน์โหลดไฟล์จาก Google Photos ได้', 'warning');
-      }
     }
 
     // Helper: Check image file type
