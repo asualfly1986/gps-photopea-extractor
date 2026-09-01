@@ -137,15 +137,21 @@
         <!-- Right Upload Buttons -->
         <div class="flex flex-wrap items-center justify-center md:justify-end gap-3 w-full md:w-auto">
           <!-- Multi Files Button -->
-          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-5 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer">
-            <i class="fa-solid fa-images mr-2.5 text-lg"></i>
+          <button id="btnSelectFiles" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold shadow-md shadow-brand-500/20 transition-all cursor-pointer">
+            <i class="fa-solid fa-images mr-2 text-lg"></i>
             <span>เลือกรูปภาพทั้งหมด</span>
           </button>
           
           <!-- Folder Upload Button -->
-          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-semibold shadow-md shadow-slate-900/10 transition-all cursor-pointer">
-            <i class="fa-solid fa-folder-open mr-2.5 text-lg text-amber-400"></i>
+          <button id="btnSelectFolder" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 active:bg-black text-white font-semibold shadow-md shadow-slate-900/10 transition-all cursor-pointer">
+            <i class="fa-solid fa-folder-open mr-2 text-lg text-amber-400"></i>
             <span>เลือกทั้งโฟลเดอร์</span>
+          </button>
+
+          <!-- Load Project JSON Button -->
+          <button id="btnLoadProject" class="flex-1 sm:flex-initial inline-flex items-center justify-center px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold shadow-md shadow-emerald-600/20 transition-all cursor-pointer" title="นำเข้าไฟล์โปรเจกต์เดิม (.json)">
+            <i class="fa-solid fa-file-import mr-2 text-lg"></i>
+            <span>นำเข้าโปรเจกต์ (.json)</span>
           </button>
         </div>
       </div>
@@ -165,7 +171,7 @@
             </p>
           </div>
           <div class="flex items-center gap-2 pt-1 text-xs text-slate-400">
-            <span class="inline-flex items-center"><i class="fa-solid fa-shield-halved mr-1 text-emerald-500"></i> ปลอดภัย ไม่ส่งไฟล์ขึ้นเซิร์ฟเวอร์</span>
+            <span class="inline-flex items-center"><i class="fa-solid fa-shield-halved mr-1 text-emerald-500"></i> บันทึกข้อมูลอัตโนมัติ 100% ปลอดภัยในเครื่อง</span>
             <span>•</span>
             <span>รองรับมือถือ Android & iOS</span>
           </div>
@@ -175,6 +181,7 @@
       <!-- Hidden Inputs -->
       <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
       <input type="file" id="folderInput" webkitdirectory directory multiple accept="image/*,.heic,.heif,.jpg,.jpeg,.png,.webp,.tiff,*" class="hidden">
+      <input type="file" id="projectInput" accept=".json" class="hidden">
     </section>
 
     <!-- Progress Bar -->
@@ -503,7 +510,7 @@
           </div>
 
           <!-- Option 9: Thai CSV -->
-          <div id="optExportCsv" class="p-3.5 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3 col-span-1 md:col-span-2">
+          <div id="optExportCsv" class="p-3.5 border-2 border-slate-200 hover:border-emerald-500 bg-slate-50 hover:bg-emerald-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
             <div class="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
               <i class="fa-solid fa-file-csv text-base"></i>
             </div>
@@ -511,6 +518,19 @@
               <h4 class="font-bold text-slate-800 group-hover:text-emerald-600 text-xs">9. ตารางข้อมูล CSV (ภาษาไทย)</h4>
               <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
                 ไฟล์ CSV ภาษาไทย (UTF-8 BOM) นำไปเปิดใน Microsoft Excel ได้ทันที
+              </p>
+            </div>
+          </div>
+
+          <!-- Option 10: JSON Project Backup -->
+          <div id="optExportProject" class="p-3.5 border-2 border-slate-200 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/40 rounded-xl cursor-pointer transition-all group flex items-start space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+              <i class="fa-solid fa-file-code text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-800 group-hover:text-indigo-600 text-xs">10. บันทึกโปรเจกต์สำรอง (.json)</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                เซฟไฟล์โปรเจกต์สำรอง (.json) นำกลับมาเปิดใช้งานบนเครื่องอื่นได้ทันที
               </p>
             </div>
           </div>
@@ -664,6 +684,10 @@
     const modalLocateBtn = document.getElementById('modalLocateBtn');
     const modalDownloadStampBtn = document.getElementById('modalDownloadStampBtn');
 
+    const btnLoadProject = document.getElementById('btnLoadProject');
+    const projectInput = document.getElementById('projectInput');
+    const optExportProject = document.getElementById('optExportProject');
+
     // Tile Layer Providers (100% Free, Clean & Watermark-Free Tiles)
     const tileProviders = {
       osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -686,9 +710,23 @@
     };
 
     // Initialize Application
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       initMap();
       setupEventListeners();
+
+      // Auto-restore previous session from IndexedDB if available
+      try {
+        const savedItems = await loadFromDB();
+        if (savedItems && savedItems.length > 0) {
+          extractedItems = savedItems;
+          dashboardSection.classList.remove('hidden');
+          renderDashboard();
+          fitMapToBounds();
+          showToast(`โหลดข้อมูลที่เคยสแกนไว้เดิมเรียบร้อยแล้ว (${savedItems.length} รูป)`, 'success');
+        }
+      } catch (e) {
+        console.warn('Could not auto-restore session:', e);
+      }
     });
 
     // Initialize Leaflet Map
@@ -775,19 +813,26 @@
       // Button Triggers for File Input
       btnSelectFiles.addEventListener('click', () => fileInput.click());
       btnSelectFolder.addEventListener('click', () => folderInput.click());
+      btnLoadProject.addEventListener('click', () => projectInput.click());
       dropzone.addEventListener('click', () => fileInput.click());
 
       // Map Controls
       mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
       btnLocateUser.addEventListener('click', locateCurrentUser);
 
-      // File Selection Reset on Click so re-uploading same file always fires change event
+      // File Selection Reset on Click
       fileInput.addEventListener('click', () => { fileInput.value = ''; });
       folderInput.addEventListener('click', () => { folderInput.value = ''; });
+      projectInput.addEventListener('click', () => { projectInput.value = ''; });
 
       // File Selection Changes
       fileInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
       folderInput.addEventListener('change', (e) => handleFilesSelected(e.target.files));
+      projectInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleProjectImport(e.target.files[0]);
+        }
+      });
 
       // Drag and Drop Events
       ['dragenter', 'dragover'].forEach(eventName => {
@@ -874,6 +919,11 @@
       optExportCsv.addEventListener('click', () => {
         exportModal.classList.add('hidden');
         exportToCsv();
+      });
+
+      optExportProject.addEventListener('click', () => {
+        exportModal.classList.add('hidden');
+        exportProjectJson();
       });
 
       btnFitMap.addEventListener('click', fitMapToBounds);
@@ -1038,17 +1088,157 @@
         }
       }
 
-      // Hide progress after slight delay
-      setTimeout(() => {
+      // Hide progress after slight delay & Auto-save to IndexedDB
+      setTimeout(async () => {
         progressContainer.classList.add('hidden');
         dashboardSection.classList.remove('hidden');
         renderDashboard();
         fitMapToBounds();
+        await saveToDB(extractedItems);
         showToast(`ประมวลผลเสร็จสิ้น ${processedCount} รูป (พบพิกัด ${gpsFoundCount} รูป)`, 'success');
       }, 500);
 
       fileInput.value = '';
       folderInput.value = '';
+    }
+
+    // 💾 IndexedDB Storage Engine
+    const DB_NAME = 'GPSPhotoExtractorDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'saved_photos';
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function saveToDB(items) {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        await store.clear();
+        for (const item of items) {
+          store.put({
+            id: item.id,
+            fileName: item.fileName,
+            rawFileName: item.rawFileName,
+            fileSize: item.fileSize,
+            fileSizeBytes: item.fileSizeBytes,
+            thumbnailUrl: item.thumbnailUrl,
+            hasGps: item.hasGps,
+            lat: item.lat,
+            lng: item.lng,
+            fullCoords: item.fullCoords,
+            dateTakenFormatted: item.dateTakenFormatted,
+            googleMapsUrl: item.googleMapsUrl
+          });
+        }
+      } catch (err) {
+        console.warn('Auto-save to IndexedDB failed:', err);
+      }
+    }
+
+    async function loadFromDB() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve) => {
+          const request = store.getAll();
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => resolve([]);
+        });
+      } catch (err) {
+        return [];
+      }
+    }
+
+    async function clearDB() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.clear();
+      } catch (err) {}
+    }
+
+    // 📦 Export Project (.json)
+    function exportProjectJson() {
+      if (extractedItems.length === 0) {
+        showToast('ไม่มีข้อมูลสำหรับบันทึกโปรเจกต์', 'warning');
+        return;
+      }
+
+      const projectData = {
+        appName: 'GPS Photo EXIF Extractor',
+        version: '2.0',
+        exportDate: new Date().toISOString(),
+        items: extractedItems.map(item => ({
+          id: item.id,
+          fileName: item.fileName,
+          rawFileName: item.rawFileName,
+          fileSize: item.fileSize,
+          fileSizeBytes: item.fileSizeBytes,
+          thumbnailUrl: item.thumbnailUrl,
+          hasGps: item.hasGps,
+          lat: item.lat,
+          lng: item.lng,
+          fullCoords: item.fullCoords,
+          dateTakenFormatted: item.dateTakenFormatted,
+          googleMapsUrl: item.googleMapsUrl
+        }))
+      };
+
+      const jsonStr = JSON.stringify(projectData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10).replace(/-/g, '') + '_' + String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GPS_Photo_Project_${timestamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('ดาวน์โหลดไฟล์โปรเจกต์ (.json) สำรองเรียบร้อยแล้ว!', 'success');
+    }
+
+    // 📂 Import Project (.json)
+    function handleProjectImport(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data && Array.isArray(data.items) && data.items.length > 0) {
+            extractedItems = data.items;
+            dashboardSection.classList.remove('hidden');
+            renderDashboard();
+            fitMapToBounds();
+            await saveToDB(extractedItems);
+            showToast(`นำเข้าโปรเจกต์เรียบร้อยแล้ว (${data.items.length} รูป)`, 'success');
+          } else {
+            showToast('ไฟล์โปรเจกต์ .json ไม่ถูกต้อง หรือไม่มีรายการรูปภาพ', 'warning');
+          }
+        } catch (err) {
+          console.error('Project import error:', err);
+          showToast('ไม่สามารถอ่านไฟล์โปรเจกต์ .json ได้', 'warning');
+        }
+      };
+      reader.readAsText(file);
     }
 
     // Helper: Clean file name by stripping any lat_lng_ or NoGPS_ coordinate prefixes
@@ -2588,21 +2778,24 @@
     }
 
     // Delete Single Item
-    function deleteSingleItem(itemId) {
+    async function deleteSingleItem(itemId) {
       extractedItems = extractedItems.filter(i => i.id !== itemId);
       renderDashboard();
+      await saveToDB(extractedItems);
       showToast('ลบรายการเรียบร้อยแล้ว', 'info');
 
       if (extractedItems.length === 0) {
         dashboardSection.classList.add('hidden');
+        await clearDB();
       }
     }
 
     // Clear All Items
-    function clearAllData() {
+    async function clearAllData() {
       if (extractedItems.length === 0) return;
       if (confirm('คุณต้องการล้างข้อมูลทั้งหมดหรือไม่?')) {
         extractedItems = [];
+        await clearDB();
         renderDashboard();
         dashboardSection.classList.add('hidden');
         showToast('ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว', 'info');
