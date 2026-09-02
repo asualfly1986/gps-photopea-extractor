@@ -2411,12 +2411,12 @@
       });
     }
 
-    // Helper: Generate crisp Canvas Text Image for PDF rendering
+    // Helper: Generate crisp Canvas Text Image for PDF rendering (with auto-font scaling to prevent truncation)
     function createTextCanvasImage(text, options = {}) {
       const {
-        width = 200,
-        height = 50,
-        font = 'bold 20px Prompt, sans-serif',
+        width = 240,
+        height = 60,
+        font = 'bold 16px Prompt, sans-serif',
         color = '#1e293b',
         bgColor = null,
         align = 'center'
@@ -2433,8 +2433,18 @@
       }
 
       ctx.fillStyle = color;
-      ctx.font = font;
       ctx.textBaseline = 'middle';
+
+      // Auto-scale font size if text exceeds canvas width
+      let fontSize = parseInt((font.match(/\d+/) || [16])[0], 10);
+      const fontName = font.replace(/bold\s+|\d+px\s+/g, '').trim();
+      ctx.font = `bold ${fontSize}px ${fontName}`;
+      
+      const maxTextWidth = width - 16;
+      while (ctx.measureText(text).width > maxTextWidth && fontSize > 8) {
+        fontSize -= 1;
+        ctx.font = `bold ${fontSize}px ${fontName}`;
+      }
 
       let x = width / 2;
       if (align === 'left') {
@@ -2484,13 +2494,13 @@
 
         // Pre-render Thai Header Canvas Images
         const headerImages = {
-          0: createTextCanvasImage('รูปก่อนทำ', { width: 150, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          1: createTextCanvasImage('รูปหลังทำ', { width: 150, height: 45, bgColor: '#059669', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          2: createTextCanvasImage('ชื่อไฟล์', { width: 220, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
-          3: createTextCanvasImage('พิกัด GPS', { width: 200, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
-          4: createTextCanvasImage('วันที่ถ่ายภาพ', { width: 160, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          5: createTextCanvasImage('สถานะ', { width: 120, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          6: createTextCanvasImage('พาหนะ', { width: 120, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' })
+          0: createTextCanvasImage('รูปก่อนทำ', { width: 230, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 16px Prompt, sans-serif' }),
+          1: createTextCanvasImage('รูปหลังทำ', { width: 230, height: 60, bgColor: '#059669', color: '#ffffff', font: 'bold 16px Prompt, sans-serif' }),
+          2: createTextCanvasImage('ชื่อไฟล์', { width: 370, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 16px Prompt, sans-serif', align: 'left' }),
+          3: createTextCanvasImage('พิกัด GPS', { width: 350, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 16px Prompt, sans-serif', align: 'left' }),
+          4: createTextCanvasImage('วันที่ถ่ายภาพ', { width: 260, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 14px Prompt, sans-serif' }),
+          5: createTextCanvasImage('สถานะ', { width: 190, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 14px Prompt, sans-serif' }),
+          6: createTextCanvasImage('พาหนะ', { width: 190, height: 60, bgColor: '#0284c7', color: '#ffffff', font: 'bold 14px Prompt, sans-serif' })
         };
 
         // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Vertical)
