@@ -2547,6 +2547,16 @@
       map.fitBounds(bounds, { padding: [30, 30] });
     }
 
+    // Force map recalculation on mobile browsers & orientation changes
+    setTimeout(() => {
+      map.invalidateSize();
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
+    }, 300);
+    window.addEventListener('resize', () => map.invalidateSize());
+    window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 300));
+
     function openModalById(idx) {
       const item = items[idx];
       if (!item || !item.base64) return;
