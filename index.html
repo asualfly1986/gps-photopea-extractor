@@ -2474,88 +2474,171 @@
 
   ${sTag}>
     const items = ${JSON.stringify(itemsWithBase64)};
-    const map = L.map('map', { tap: true, touchZoom: true }).setView([13.736717, 100.523186], 6);
-    
-    const tileProviders = {
-      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
-      satellite: L.layerGroup([
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri World Imagery' }),
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
-      ]),
-      light: L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' })
-    };
 
-    let currentTileLayer = tileProviders.osm;
-    currentTileLayer.addTo(map);
+    function initInteractiveMap() {
+      if (typeof L !== 'undefined') {
+        try {
+          const map = L.map('map', { tap: true, touchZoom: true }).setView([13.736717, 100.523186], 6);
+          
+          const tileProviders = {
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }),
+            satellite: L.layerGroup([
+              L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '&copy; Esri World Imagery' }),
+              L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 })
+            ]),
+            light: L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' })
+          };
 
-    document.getElementById('reportMapLayerSelect').addEventListener('change', (e) => {
-      if (currentTileLayer) map.removeLayer(currentTileLayer);
-      currentTileLayer = tileProviders[e.target.value] || tileProviders.osm;
-      currentTileLayer.addTo(map);
-    });
-    
-    const bounds = [];
-    items.forEach((item, idx) => {
-      if (item.hasGps) {
-        const isDone = item.status === 'completed';
-        const pinIcon = L.divIcon({
-          className: isDone ? 'custom-green-pin' : 'custom-red-pin',
-          html: isDone ? \`
-            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-green-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
-                <i class="fa-solid fa-check text-xs font-bold"></i>
-              </div>
-              <div class="w-2.5 h-2.5 bg-green-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
-            </div>
-          \` : \`
-            <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
-                <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-inner">
-                  <i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i>
+          let currentTileLayer = tileProviders.osm;
+          currentTileLayer.addTo(map);
+
+          const selectEl = document.getElementById('reportMapLayerSelect');
+          if (selectEl) {
+            selectEl.addEventListener('change', (e) => {
+              if (currentTileLayer) map.removeLayer(currentTileLayer);
+              currentTileLayer = tileProviders[e.target.value] || tileProviders.osm;
+              currentTileLayer.addTo(map);
+            });
+          }
+          
+          const bounds = [];
+          items.forEach((item, idx) => {
+            if (item.hasGps) {
+              const isDone = item.status === 'completed';
+              const pinIcon = L.divIcon({
+                className: isDone ? 'custom-green-pin' : 'custom-red-pin',
+                html: isDone ? \`
+                  <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-green-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
+                      <i class="fa-solid fa-check text-xs font-bold"></i>
+                    </div>
+                    <div class="w-2.5 h-2.5 bg-green-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
+                  </div>
+                \` : \`
+                  <div class="relative group cursor-pointer -translate-x-1/2 -translate-y-full">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-b from-red-500 to-rose-600 text-white border-2 border-white shadow-lg flex items-center justify-center transform group-hover:scale-125 transition-transform">
+                      <div class="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-inner">
+                        <i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i>
+                      </div>
+                    </div>
+                    <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
+                  </div>
+                \`,
+                iconSize: [32, 38],
+                iconAnchor: [16, 38],
+                popupAnchor: [0, -38]
+              });
+
+              const marker = L.marker([item.lat, item.lng], { icon: pinIcon }).addTo(map);
+              const popupHtml = \`
+                <div class="p-1 space-y-1.5 max-w-[200px]">
+                  \${item.base64 ? \`<img src="\${item.base64}" onclick="openModalById(\${idx})" class="w-full h-28 object-cover rounded-lg cursor-pointer border border-slate-200">\` : ''}
+                  <p class="font-bold text-xs text-slate-900 truncate" title="\${item.fileName}">\${item.fileName}</p>
+                  <p class="text-[11px] text-slate-500">\${item.dateTakenFormatted}</p>
+                  <div class="flex items-center justify-between pt-1">
+                    <p class="text-[11px] font-mono font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block">\${item.lat}, \${item.lng}</p>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded \${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">\${isDone ? '✅ แล้วเสร็จ' : '⚡ รอแก้ไข'}</span>
+                  </div>
+                  <div class="flex items-center justify-between pt-1">
+                    <span class="text-[10px] font-bold text-slate-500">พาหนะ:</span>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">\${item.vehicle || 'คนปีนตัด'}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="w-2.5 h-2.5 bg-rose-600 rotate-45 mx-auto -mt-1.5 border-r-2 border-b-2 border-white shadow-sm"></div>
-            </div>
-          \`,
-          iconSize: [32, 38],
-          iconAnchor: [16, 38],
-          popupAnchor: [0, -38]
-        });
+              \`;
+              marker.bindPopup(popupHtml);
+              bounds.push([item.lat, item.lng]);
+            }
+          });
 
-        const marker = L.marker([item.lat, item.lng], { icon: pinIcon }).addTo(map);
-        const popupHtml = \`
-          <div class="p-1 space-y-1.5 max-w-[200px]">
-            \${item.base64 ? \`<img src="\${item.base64}" onclick="openModalById(\${idx})" class="w-full h-28 object-cover rounded-lg cursor-pointer border border-slate-200">\` : ''}
-            <p class="font-bold text-xs text-slate-900 truncate" title="\${item.fileName}">\${item.fileName}</p>
-            <p class="text-[11px] text-slate-500">\${item.dateTakenFormatted}</p>
-            <div class="flex items-center justify-between pt-1">
-              <p class="text-[11px] font-mono font-bold text-sky-600 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100 inline-block">\${item.lat}, \${item.lng}</p>
-              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded \${isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">\${isDone ? '✅ แล้วเสร็จ' : '⚡ รอแก้ไข'}</span>
+          if (bounds.length > 0) {
+            map.fitBounds(bounds, { padding: [30, 30] });
+          }
+
+          setTimeout(() => {
+            map.invalidateSize();
+            if (bounds.length > 0) {
+              map.fitBounds(bounds, { padding: [30, 30] });
+            }
+          }, 300);
+          window.addEventListener('resize', () => map.invalidateSize());
+          window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 300));
+          return;
+        } catch(e) {
+          console.warn('Leaflet online map init error, falling back to offline map:', e);
+        }
+      }
+
+      // OFFLINE MAP ENGINE: Works 100% without internet connection!
+      renderOfflineMapEngine();
+    }
+
+    function renderOfflineMapEngine() {
+      const mapDiv = document.getElementById('map');
+      if (!mapDiv) return;
+
+      const gpsItems = items.filter(i => i.hasGps);
+      if (gpsItems.length === 0) {
+        mapDiv.innerHTML = '<div class="p-8 text-center text-slate-500 font-bold">ไม่พบรูปภาพที่มีพิกัด GPS</div>';
+        return;
+      }
+
+      const lats = gpsItems.map(i => i.lat);
+      const lngs = gpsItems.map(i => i.lng);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+
+      const latSpan = (maxLat - minLat) || 0.005;
+      const lngSpan = (maxLng - minLng) || 0.005;
+
+      let pinsHtml = '';
+      gpsItems.forEach((item) => {
+        const itemIdx = items.indexOf(item);
+        const xPct = 12 + ((item.lng - minLng) / lngSpan) * 76;
+        const yPct = 88 - ((item.lat - minLat) / latSpan) * 76;
+
+        const isDone = item.status === 'completed';
+        const colorBg = isDone ? 'background: linear-gradient(to bottom, #10b981, #059669);' : 'background: linear-gradient(to bottom, #f43f5e, #e11d48);';
+
+        pinsHtml += \`
+          <div onclick="openModalById(\${itemIdx})" style="position: absolute; left: \${xPct}%; top: \${yPct}%; transform: translate(-50%, -100%); cursor: pointer; z-index: 10;" title="\${item.fileName}">
+            <div style="width: 32px; height: 32px; border-radius: 50%; \${colorBg} border: 2px solid #ffffff; box-shadow: 0 4px 10px rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center;">
+              \${isDone ? '<i class="fa-solid fa-check text-xs font-bold text-white"></i>' : '<div style="width: 20px; height: 20px; border-radius: 50%; background: #ffffff; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-bolt text-[11px] text-red-600 font-bold"></i></div>'}
             </div>
-            <div class="flex items-center justify-between pt-1">
-              <span class="text-[10px] font-bold text-slate-500">พาหนะ:</span>
-              <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">\${item.vehicle || 'คนปีนตัด'}</span>
+            <div style="width: 10px; height: 10px; background: \${isDone ? '#059669' : '#e11d48'}; transform: rotate(45deg); margin: -5px auto 0 auto; border-right: 2px solid #fff; border-bottom: 2px solid #fff;"></div>
+            <div style="background: rgba(15,23,42,0.92); color: #ffffff; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 12px; margin-top: 3px; white-space: nowrap; text-align: center; border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 2px 4px rgba(0,0,0,0.3);">
+              \${item.fileName}
             </div>
           </div>
         \`;
-        marker.bindPopup(popupHtml);
-        bounds.push([item.lat, item.lng]);
-      }
-    });
+      });
 
-    if (bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [30, 30] });
+      mapDiv.style.position = 'relative';
+      mapDiv.style.overflow = 'hidden';
+      mapDiv.style.height = '380px';
+      mapDiv.style.borderRadius = '12px';
+      mapDiv.style.background = '#0f172a';
+      mapDiv.style.backgroundImage = 'radial-gradient(#334155 1.5px, transparent 1.5px)';
+      mapDiv.style.backgroundSize = '24px 24px';
+
+      mapDiv.innerHTML = \`
+        <div style="position: absolute; top: 10px; left: 10px; right: 10px; z-index: 20; background: rgba(30,41,59,0.95); color: #38bdf8; padding: 8px 14px; border-radius: 10px; font-size: 11px; font-weight: bold; border: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+          <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-signal" style="color: #34d399;"></i> โหมดแผนที่ออฟไลน์ (Offline Interactive Map)</span>
+          <span style="color: #cbd5e1; font-weight: normal;">พบ \${gpsItems.length} หมุดพิกัด</span>
+        </div>
+        <div style="position: absolute; inset: 0; padding: 20px;">
+          \${pinsHtml}
+        </div>
+      \`;
     }
 
-    // Force map recalculation on mobile browsers & orientation changes
-    setTimeout(() => {
-      map.invalidateSize();
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      }
-    }, 300);
-    window.addEventListener('resize', () => map.invalidateSize());
-    window.addEventListener('orientationchange', () => setTimeout(() => map.invalidateSize(), 300));
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initInteractiveMap);
+    } else {
+      initInteractiveMap();
+    }
+    setTimeout(initInteractiveMap, 300);
 
     function openModalById(idx) {
       const item = items[idx];
