@@ -213,6 +213,36 @@
     <!-- Dashboard Content (Stats + View Toggle) -->
     <div id="dashboardSection" class="hidden space-y-6">
       
+      <!-- Multi-Project Header Manager -->
+      <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-lg border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center space-x-3 w-full sm:w-auto">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center border border-sky-500/30 shrink-0">
+            <i class="fa-solid fa-folder-tree text-lg"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-sky-400">โปรเจกต์ / ไซต์งานปัจจุบัน:</span>
+              <button id="btnRenameProject" class="text-xs text-slate-400 hover:text-white transition-colors" title="เปลี่ยนชื่อโปรเจกต์">
+                <i class="fa-solid fa-pen-to-square"></i> แก้ไขชื่อ
+              </button>
+            </div>
+            <select id="projectSelect" class="bg-slate-800 text-white text-sm font-bold rounded-lg px-3 py-1.5 border border-slate-700 focus:ring-2 focus:ring-sky-500 focus:outline-none cursor-pointer w-full sm:w-72 truncate mt-1">
+              <!-- Dynamically populated -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Project Action Controls -->
+        <div class="flex items-center space-x-2 w-full sm:w-auto justify-end flex-wrap gap-y-2">
+          <button id="btnNewProject" class="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 active:bg-sky-700 text-white text-xs font-bold rounded-xl transition-all flex items-center shadow-md shadow-sky-900/30">
+            <i class="fa-solid fa-plus mr-1.5"></i>สร้างโปรเจกต์ใหม่
+          </button>
+          <button id="btnDeleteProject" class="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold rounded-xl transition-all border border-rose-500/30 flex items-center" title="ลบโปรเจกต์ปัจจุบัน">
+            <i class="fa-solid fa-trash-can mr-1.5"></i>ลบโปรเจกต์นี้
+          </button>
+        </div>
+      </div>
+
       <!-- Summary Cards -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <!-- Total -->
@@ -726,18 +756,22 @@
       initMap();
       setupEventListeners();
 
-      // Auto-restore previous session from IndexedDB if available
+      // Auto-restore projects from Multi-Project IndexedDB
       try {
-        const savedItems = await loadFromDB();
-        if (savedItems && savedItems.length > 0) {
-          extractedItems = savedItems;
-          dashboardSection.classList.remove('hidden');
-          renderDashboard();
-          fitMapToBounds();
-          showToast(`โหลดข้อมูลที่เคยสแกนไว้เดิมเรียบร้อยแล้ว (${savedItems.length} รูป)`, 'success');
+        projectsList = await loadProjectsFromDB();
+        if (projectsList && projectsList.length > 0) {
+          currentProjectId = projectsList[0].id;
+          extractedItems = projectsList[0].items || [];
+          renderProjectSelector();
+          if (extractedItems.length > 0) {
+            dashboardSection.classList.remove('hidden');
+            renderDashboard();
+            fitMapToBounds();
+            showToast(`โหลดโปรเจกต์ "${projectsList[0].name}" เรียบร้อยแล้ว (${extractedItems.length} รูป)`, 'success');
+          }
         }
       } catch (e) {
-        console.warn('Could not auto-restore session:', e);
+        console.warn('Could not auto-restore projects session:', e);
       }
     });
 
@@ -822,6 +856,17 @@
 
     // Event Listeners Setup
     function setupEventListeners() {
+      // Multi-Project Controls
+      const pSelect = document.getElementById('projectSelect');
+      const pNew = document.getElementById('btnNewProject');
+      const pRename = document.getElementById('btnRenameProject');
+      const pDel = document.getElementById('btnDeleteProject');
+
+      if (pSelect) pSelect.addEventListener('change', (e) => switchProject(e.target.value));
+      if (pNew) pNew.addEventListener('click', createNewProjectPrompt);
+      if (pRename) pRename.addEventListener('click', renameCurrentProjectPrompt);
+      if (pDel) pDel.addEventListener('click', deleteCurrentProjectConfirm);
+
       // Map Controls
       mapLayerSelect.addEventListener('change', (e) => switchMapTileLayer(e.target.value));
       btnLocateUser.addEventListener('click', locateCurrentUser);
@@ -1103,10 +1148,13 @@
       folderInput.value = '';
     }
 
-    // 💾 IndexedDB Storage Engine
-    const DB_NAME = 'GPSPhotoExtractorDB';
+    // 💾 Multi-Project Storage Engine
+    let projectsList = [];
+    let currentProjectId = null;
+
+    const DB_NAME = 'GPSPhotoExtractorDB_v3';
     const DB_VERSION = 1;
-    const STORE_NAME = 'saved_photos';
+    const STORE_NAME = 'projects_store';
 
     function openDB() {
       return new Promise((resolve, reject) => {
@@ -1122,35 +1170,165 @@
       });
     }
 
-    async function saveToDB(items) {
+    async function loadProjectsFromDB() {
       try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const store = tx.objectStore(STORE_NAME);
+        return new Promise((resolve) => {
+          const req = store.getAll();
+          req.onsuccess = () => {
+            let list = req.result || [];
+            if (list.length === 0) {
+              const defaultProj = {
+                id: 'proj_default',
+                name: 'โครงการที่ 1 (ไซต์งานหลัก)',
+                createdAt: new Date().toISOString(),
+                items: []
+              };
+              list = [defaultProj];
+            }
+            resolve(list);
+          };
+          req.onerror = () => resolve([]);
+        });
+      } catch(err) {
+        return [{ id: 'proj_default', name: 'โครงการที่ 1 (ไซต์งานหลัก)', items: [] }];
+      }
+    }
+
+    async function saveToDB() {
+      try {
+        if (currentProjectId) {
+          const curProj = projectsList.find(p => p.id === currentProjectId);
+          if (curProj) {
+            curProj.items = extractedItems;
+          }
+        }
+
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         await store.clear();
-        for (const item of items) {
+        for (const proj of projectsList) {
           store.put({
-            id: item.id,
-            fileName: item.fileName,
-            rawFileName: item.rawFileName,
-            fileSize: item.fileSize,
-            fileSizeBytes: item.fileSizeBytes,
-            thumbnailUrl: item.thumbnailUrl,
-            hasGps: item.hasGps,
-            lat: item.lat,
-            lng: item.lng,
-            fullCoords: item.fullCoords,
-            dateTakenFormatted: item.dateTakenFormatted,
-            googleMapsUrl: item.googleMapsUrl,
-            status: item.status || 'pending',
-            vehicle: item.vehicle || 'คนปีนตัด',
-            afterThumbnailUrl: item.afterThumbnailUrl || null,
-            afterFileName: item.afterFileName || null
+            id: proj.id,
+            name: proj.name,
+            createdAt: proj.createdAt || new Date().toISOString(),
+            items: (proj.items || []).map(item => ({
+              id: item.id,
+              fileName: item.fileName,
+              rawFileName: item.rawFileName,
+              fileSize: item.fileSize,
+              fileSizeBytes: item.fileSizeBytes,
+              thumbnailUrl: item.thumbnailUrl,
+              hasGps: item.hasGps,
+              lat: item.lat,
+              lng: item.lng,
+              fullCoords: item.fullCoords,
+              dateTakenFormatted: item.dateTakenFormatted,
+              googleMapsUrl: item.googleMapsUrl,
+              status: item.status || 'pending',
+              vehicle: item.vehicle || 'คนปีนตัด',
+              afterThumbnailUrl: item.afterThumbnailUrl || null,
+              afterFileName: item.afterFileName || null
+            }))
           });
         }
       } catch (err) {
-        console.warn('Auto-save to IndexedDB failed:', err);
+        console.warn('Auto-save projects to IndexedDB failed:', err);
       }
+    }
+
+    function renderProjectSelector() {
+      const selectEl = document.getElementById('projectSelect');
+      if (!selectEl) return;
+
+      selectEl.innerHTML = '';
+      projectsList.forEach(proj => {
+        const opt = document.createElement('option');
+        opt.value = proj.id;
+        opt.textContent = `${proj.name} (${proj.items ? proj.items.length : 0} รูป)`;
+        if (proj.id === currentProjectId) opt.selected = true;
+        selectEl.appendChild(opt);
+      });
+    }
+
+    function switchProject(projId) {
+      if (currentProjectId) {
+        const curProj = projectsList.find(p => p.id === currentProjectId);
+        if (curProj) curProj.items = extractedItems;
+      }
+
+      currentProjectId = projId;
+      const targetProj = projectsList.find(p => p.id === currentProjectId);
+      if (targetProj) {
+        extractedItems = targetProj.items || [];
+      } else {
+        extractedItems = [];
+      }
+
+      renderProjectSelector();
+      if (extractedItems.length > 0) {
+        dashboardSection.classList.remove('hidden');
+        renderDashboard();
+        fitMapToBounds();
+      } else {
+        dashboardSection.classList.add('hidden');
+      }
+      saveToDB();
+    }
+
+    function createNewProjectPrompt() {
+      const name = prompt('กรุณากรอกชื่อโปรเจกต์ใหม่ / ไซต์งาน:', `โครงการที่ ${projectsList.length + 1}`);
+      if (!name || !name.trim()) return;
+
+      const newProj = {
+        id: 'proj_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now(),
+        name: name.trim(),
+        createdAt: new Date().toISOString(),
+        items: []
+      };
+
+      projectsList.push(newProj);
+      switchProject(newProj.id);
+      showToast(`สร้างและสลับไปที่โปรเจกต์ "${newProj.name}" เรียบร้อยแล้ว`, 'success');
+    }
+
+    function renameCurrentProjectPrompt() {
+      const curProj = projectsList.find(p => p.id === currentProjectId);
+      if (!curProj) return;
+
+      const newName = prompt('แก้ไขชื่อโปรเจกต์:', curProj.name);
+      if (!newName || !newName.trim()) return;
+
+      curProj.name = newName.trim();
+      renderProjectSelector();
+      saveToDB();
+      showToast(`เปลี่ยนชื่อโปรเจกต์เป็น "${curProj.name}" แล้ว`, 'success');
+    }
+
+    function deleteCurrentProjectConfirm() {
+      const curProj = projectsList.find(p => p.id === currentProjectId);
+      if (!curProj) return;
+
+      if (!confirm(`คุณต้องการลบโปรเจกต์ "${curProj.name}" พร้อมรูปภาพทั้งหมด (${curProj.items ? curProj.items.length : 0} รูป) ใช่หรือไม่?`)) {
+        return;
+      }
+
+      projectsList = projectsList.filter(p => p.id !== currentProjectId);
+      if (projectsList.length === 0) {
+        const defaultProj = {
+          id: 'proj_' + Date.now(),
+          name: 'โครงการที่ 1 (ไซต์งานหลัก)',
+          createdAt: new Date().toISOString(),
+          items: []
+        };
+        projectsList.push(defaultProj);
+      }
+
+      switchProject(projectsList[0].id);
+      showToast('ลบโปรเจกต์และสลับไปยังโปรเจกต์ถัดไปเรียบร้อยแล้ว', 'info');
     }
 
     // Helper: Upload After Action Photo for a specific item
@@ -1188,7 +1366,7 @@
           item.status = 'completed'; // Auto update status to Completed (แล้วเสร็จ)
 
           renderDashboard();
-          await saveToDB(extractedItems);
+          await saveToDB();
           showToast(`อัปโหลดภาพหลังตัดสำหรับ ${item.fileName} เรียบร้อยแล้ว! (สถานะ: แล้วเสร็จ)`, 'success');
         } catch(err) {
           console.error('Error uploading after image:', err);
