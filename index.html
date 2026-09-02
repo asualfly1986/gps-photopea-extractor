@@ -391,7 +391,7 @@
               <table class="w-full text-left text-xs border-collapse">
                 <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider sticky top-0 z-20 border-b border-slate-200">
                   <tr>
-                    <th class="py-3 px-3">รูปภาพ</th>
+                    <th class="py-3 px-3">รูปก่อน/หลังทำ</th>
                     <th class="py-3 px-3">ชื่อไฟล์ / วันที่</th>
                     <th class="py-3 px-3">พิกัด GPS</th>
                     <th class="py-3 px-3 text-center">สถานะ</th>
@@ -2484,21 +2484,26 @@
 
         // Pre-render Thai Header Canvas Images
         const headerImages = {
-          0: createTextCanvasImage('รูปภาพ', { width: 160, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          1: createTextCanvasImage('ชื่อไฟล์', { width: 220, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
-          2: createTextCanvasImage('พิกัด GPS', { width: 200, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
-          3: createTextCanvasImage('วันที่ถ่ายภาพ', { width: 170, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          4: createTextCanvasImage('สถานะ', { width: 130, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
-          5: createTextCanvasImage('พาหนะ', { width: 130, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' })
+          0: createTextCanvasImage('รูปก่อนทำ', { width: 150, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          1: createTextCanvasImage('รูปหลังทำ', { width: 150, height: 45, bgColor: '#059669', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          2: createTextCanvasImage('ชื่อไฟล์', { width: 220, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
+          3: createTextCanvasImage('พิกัด GPS', { width: 200, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif', align: 'left' }),
+          4: createTextCanvasImage('วันที่ถ่ายภาพ', { width: 160, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          5: createTextCanvasImage('สถานะ', { width: 120, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' }),
+          6: createTextCanvasImage('พาหนะ', { width: 120, height: 45, bgColor: '#0284c7', color: '#ffffff', font: 'bold 20px Prompt, sans-serif' })
         };
 
         // Pre-process & EXIF auto-rotate images (Orientation 6/8 -> Upright Vertical)
         const loadedImages = {};
+        const loadedAfterImages = {};
         for (let i = 0; i < extractedItems.length; i++) {
           const item = extractedItems[i];
           const corrected = await getExifCorrectedImageDataUrl(item);
           if (corrected) {
             loadedImages[item.id] = corrected;
+          }
+          if (item.afterThumbnailUrl) {
+            loadedAfterImages[item.id] = item.afterThumbnailUrl;
           }
           if (i % 3 === 0) await new Promise(r => setTimeout(r, 10));
         }
@@ -2507,12 +2512,13 @@
         for (let i = 0; i < extractedItems.length; i++) {
           const item = extractedItems[i];
           tableData.push([
-            '', // Image column placeholder
+            '', // รูปก่อนทำ
+            '', // รูปหลังทำ
             item.fileName,
             item.hasGps ? `${item.lat}, ${item.lng}` : 'ไม่มีข้อมูล GPS',
             item.dateTakenFormatted,
-            '', // Status rendered via Canvas
-            ''  // Vehicle rendered via Canvas
+            '', // สถานะ
+            ''  // พาหนะ
           ]);
         }
 
@@ -2520,18 +2526,19 @@
           startY: 28,
           margin: { top: 28, bottom: 24, left: 14, right: 14 },
           rowPageBreak: 'avoid',
-          head: [['', '', '', '', '', '']],
+          head: [['', '', '', '', '', '', '']],
           body: tableData,
           theme: 'grid',
           headStyles: { fillColor: [2, 132, 199], minCellHeight: 8 },
           bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
-            0: { cellWidth: 26 }, // Photo
-            1: { cellWidth: 42 }, // File Name
-            2: { cellWidth: 38 }, // GPS Coords
-            3: { cellWidth: 32 }, // Date
-            4: { cellWidth: 22, halign: 'center' }, // Status
-            5: { cellWidth: 22, halign: 'center' }  // Vehicle
+            0: { cellWidth: 23 }, // รูปก่อนทำ
+            1: { cellWidth: 23 }, // รูปหลังทำ
+            2: { cellWidth: 38 }, // ชื่อไฟล์
+            3: { cellWidth: 36 }, // พิกัด GPS
+            4: { cellWidth: 26 }, // วันที่
+            5: { cellWidth: 18, halign: 'center' }, // สถานะ
+            6: { cellWidth: 18, halign: 'center' }  // พาหนะ
           },
           didDrawCell: function(data) {
             // Draw Thai Headers
@@ -2548,13 +2555,13 @@
               const item = extractedItems[data.row.index];
               if (!item) return;
 
-              // Column 0: Photo Thumbnail
+              // Column 0: รูปก่อนทำ (Before Photo)
               if (data.column.index === 0) {
                 const imgObj = loadedImages[item.id];
                 if (imgObj && imgObj.dataUrl) {
                   try {
-                    const maxW = 20;
-                    const maxH = 20;
+                    const maxW = 19;
+                    const maxH = 19;
                     let drawW = maxW;
                     let drawH = maxH;
                     const aspect = imgObj.width / imgObj.height;
@@ -2574,8 +2581,22 @@
                 }
               }
 
-              // Column 4: Status Badge (แล้วเสร็จ / รอแก้ไข)
-              if (data.column.index === 4) {
+              // Column 1: รูปหลังทำ (After Photo)
+              if (data.column.index === 1) {
+                const afterUrl = loadedAfterImages[item.id];
+                if (afterUrl) {
+                  try {
+                    const maxW = 19;
+                    const maxH = 19;
+                    const offsetX = data.cell.x + (data.cell.width - maxW) / 2;
+                    const offsetY = data.cell.y + (data.cell.height - maxH) / 2;
+                    doc.addImage(afterUrl, 'JPEG', offsetX, offsetY, maxW, maxH);
+                  } catch(e) {}
+                }
+              }
+
+              // Column 5: Status Badge (แล้วเสร็จ / รอแก้ไข)
+              if (data.column.index === 5) {
                 const isDone = item.status === 'completed';
                 const statusImg = createTextCanvasImage(isDone ? 'แล้วเสร็จ' : 'รอแก้ไข', {
                   width: 140,
@@ -2589,8 +2610,8 @@
                 } catch(e) {}
               }
 
-              // Column 5: Vehicle Badge (คนปีนตัด, รถกระเช้า, รถกระเช้าHotline, รถเครน, รถเครนใหญ่)
-              if (data.column.index === 5) {
+              // Column 6: Vehicle Badge (คนปีนตัด, รถกระเช้า, รถกระเช้าHotline, รถเครน, รถเครนใหญ่)
+              if (data.column.index === 6) {
                 const vVal = item.vehicle || 'คนปีนตัด';
                 const vehicleImg = createTextCanvasImage(vVal, {
                   width: 150,
