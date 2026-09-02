@@ -1143,12 +1143,59 @@
             dateTakenFormatted: item.dateTakenFormatted,
             googleMapsUrl: item.googleMapsUrl,
             status: item.status || 'pending',
-            vehicle: item.vehicle || 'คนปีนตัด'
+            vehicle: item.vehicle || 'คนปีนตัด',
+            afterThumbnailUrl: item.afterThumbnailUrl || null,
+            afterFileName: item.afterFileName || null
           });
         }
       } catch (err) {
         console.warn('Auto-save to IndexedDB failed:', err);
       }
+    }
+
+    // Helper: Upload After Action Photo for a specific item
+    function uploadAfterImageForItem(itemId) {
+      const item = extractedItems.find(i => i.id === itemId);
+      if (!item) return;
+
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*,.heic,.heif';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        showToast(`กำลังอัปโหลดภาพหลังตัดสำหรับ ${item.fileName}...`, 'info');
+        try {
+          const ext = file.name.split('.').pop().toLowerCase();
+          const isHeic = (ext === 'heic' || ext === 'heif');
+          let afterThumbnailUrl = null;
+
+          if (isHeic && window.heic2any) {
+            try {
+              const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.4 });
+              const blobObj = Array.isArray(converted) ? converted[0] : converted;
+              afterThumbnailUrl = URL.createObjectURL(blobObj);
+            } catch(e) {}
+          }
+          if (!afterThumbnailUrl) {
+            afterThumbnailUrl = URL.createObjectURL(file);
+          }
+
+          item.afterFile = file;
+          item.afterFileName = file.name;
+          item.afterThumbnailUrl = afterThumbnailUrl;
+          item.status = 'completed'; // Auto update status to Completed (แล้วเสร็จ)
+
+          renderDashboard();
+          await saveToDB(extractedItems);
+          showToast(`อัปโหลดภาพหลังตัดสำหรับ ${item.fileName} เรียบร้อยแล้ว! (สถานะ: แล้วเสร็จ)`, 'success');
+        } catch(err) {
+          console.error('Error uploading after image:', err);
+          showToast('เกิดข้อผิดพลาดในการอัปโหลดภาพหลังตัด', 'warning');
+        }
+      };
+      input.click();
     }
 
     async function loadFromDB() {
@@ -1430,13 +1477,33 @@
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-sky-50/50 transition-colors cursor-pointer group';
         
-        // Thumbnail Column
+        // Thumbnail Column (Before & After Photos)
         const tdThumb = document.createElement('td');
         tdThumb.className = 'py-2.5 px-3';
-        if (item.thumbnailUrl) {
+        if (item.thumbnailUrl && item.afterThumbnailUrl) {
           tdThumb.innerHTML = `
-            <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm relative group-hover:border-brand-400">
-              <img src="${item.thumbnailUrl}" alt="${item.fileName}" class="w-full h-full object-cover">
+            <div class="flex items-center space-x-1.5 shrink-0">
+              <div class="relative group/before" title="ภาพก่อนตัด: ${item.fileName}">
+                <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm">
+                  <img src="${item.thumbnailUrl}" class="w-full h-full object-cover">
+                </div>
+                <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-sky-600 text-white text-[8px] font-bold px-1 rounded shadow">ก่อน</span>
+              </div>
+              <div class="relative group/after" title="ภาพหลังตัด: ${item.afterFileName || 'หลังตัด'}">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 border border-emerald-300 overflow-hidden shrink-0 shadow-sm">
+                  <img src="${item.afterThumbnailUrl}" class="w-full h-full object-cover">
+                </div>
+                <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-[8px] font-bold px-1 rounded shadow">หลัง</span>
+              </div>
+            </div>
+          `;
+        } else if (item.thumbnailUrl) {
+          tdThumb.innerHTML = `
+            <div class="relative group/before" title="ภาพก่อนตัด: ${item.fileName}">
+              <div class="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden shrink-0 shadow-sm relative group-hover:border-brand-400">
+                <img src="${item.thumbnailUrl}" alt="${item.fileName}" class="w-full h-full object-cover">
+              </div>
+              <span class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-sky-600 text-white text-[8px] font-bold px-1 rounded shadow">ก่อน</span>
             </div>
           `;
         } else {
@@ -1531,7 +1598,11 @@
         const tdActions = document.createElement('td');
         tdActions.className = 'py-2.5 px-3 text-right space-x-1 whitespace-nowrap';
         
-        let actionButtons = '';
+        let actionButtons = `
+          <button class="btn-upload-after inline-flex items-center justify-center px-2 py-1.5 rounded-lg ${item.afterThumbnailUrl ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800' : 'bg-sky-50 hover:bg-sky-100 text-sky-700'} text-[11px] font-bold transition-colors mr-1" title="${item.afterThumbnailUrl ? 'เปลี่ยนภาพหลังตัด' : 'อัปโหลดภาพหลังตัด/ดำเนินการแล้ว'}">
+            <i class="fa-solid fa-camera mr-1"></i>${item.afterThumbnailUrl ? 'เปลี่ยนภาพหลัง' : 'อัปภาพหลังตัด'}
+          </button>
+        `;
         if (item.hasGps) {
           actionButtons += `
             <a href="${item.googleMapsUrl}" target="_blank" rel="noopener" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors" title="ดูบน Google Maps">
@@ -1552,6 +1623,14 @@
         `;
 
         tdActions.innerHTML = actionButtons;
+
+        const uploadAfterBtn = tdActions.querySelector('.btn-upload-after');
+        if (uploadAfterBtn) {
+          uploadAfterBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            uploadAfterImageForItem(item.id);
+          });
+        }
 
         const copyBtn = tdGps.querySelector('.btn-copy-coords');
         if (copyBtn) {
@@ -1649,10 +1728,21 @@
         const marker = L.marker([item.lat, item.lng], { icon: customIcon, itemId: item.id });
 
         const popupContent = `
-          <div class="p-2 max-w-[220px] text-slate-800 space-y-2">
-            ${item.thumbnailUrl ? `
-              <div class="w-full h-28 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden">
-                <img src="${item.thumbnailUrl}" class="w-full h-full object-cover">
+          <div class="p-2 max-w-[240px] text-slate-800 space-y-2">
+            ${item.thumbnailUrl || item.afterThumbnailUrl ? `
+              <div class="grid ${item.afterThumbnailUrl ? 'grid-cols-2' : 'grid-cols-1'} gap-1.5 w-full">
+                ${item.thumbnailUrl ? `
+                  <div class="relative rounded-lg overflow-hidden border border-slate-200 bg-slate-100 h-24">
+                    <img src="${item.thumbnailUrl}" class="w-full h-full object-cover">
+                    <span class="absolute top-1 left-1 bg-sky-600/90 text-white text-[8px] font-bold px-1 rounded shadow">ก่อนตัด</span>
+                  </div>
+                ` : ''}
+                ${item.afterThumbnailUrl ? `
+                  <div class="relative rounded-lg overflow-hidden border border-emerald-300 bg-emerald-50 h-24">
+                    <img src="${item.afterThumbnailUrl}" class="w-full h-full object-cover">
+                    <span class="absolute top-1 left-1 bg-emerald-600/90 text-white text-[8px] font-bold px-1 rounded shadow">หลังตัด</span>
+                  </div>
+                ` : ''}
               </div>
             ` : ''}
             <div class="text-xs">
