@@ -2534,21 +2534,21 @@
 
         doc.autoTable({
           startY: 28,
-          margin: { top: 28, bottom: 24, left: 14, right: 14 },
+          margin: { top: 28, bottom: 24, left: 10, right: 10 },
           rowPageBreak: 'avoid',
           head: [['', '', '', '', '', '', '']],
           body: tableData,
           theme: 'grid',
-          headStyles: { fillColor: [2, 132, 199], minCellHeight: 8 },
+          headStyles: { fillColor: [2, 132, 199], minCellHeight: 9 },
           bodyStyles: { fontSize: 8, minCellHeight: 22, verticalAlign: 'middle' },
           columnStyles: {
-            0: { cellWidth: 23 }, // รูปก่อนทำ
-            1: { cellWidth: 23 }, // รูปหลังทำ
-            2: { cellWidth: 38 }, // ชื่อไฟล์
-            3: { cellWidth: 36 }, // พิกัด GPS
-            4: { cellWidth: 26 }, // วันที่
-            5: { cellWidth: 18, halign: 'center' }, // สถานะ
-            6: { cellWidth: 18, halign: 'center' }  // พาหนะ
+            0: { cellWidth: 23, halign: 'center' }, // รูปก่อนทำ
+            1: { cellWidth: 23, halign: 'center' }, // รูปหลังทำ
+            2: { cellWidth: 38, halign: 'left' },   // ชื่อไฟล์
+            3: { cellWidth: 36, halign: 'left' },   // พิกัด GPS
+            4: { cellWidth: 26, halign: 'center' }, // วันที่
+            5: { cellWidth: 22, halign: 'center' }, // สถานะ
+            6: { cellWidth: 22, halign: 'center' }  // พาหนะ
           },
           didDrawCell: function(data) {
             // Draw Thai Headers
@@ -2609,14 +2609,18 @@
               if (data.column.index === 5) {
                 const isDone = item.status === 'completed';
                 const statusImg = createTextCanvasImage(isDone ? 'แล้วเสร็จ' : 'รอแก้ไข', {
-                  width: 140,
+                  width: 160,
                   height: 45,
                   bgColor: isDone ? '#ecfdf5' : '#fff1f2',
                   color: isDone ? '#047857' : '#be123c',
-                  font: 'bold 20px Prompt, sans-serif'
+                  font: 'bold 18px Prompt, sans-serif'
                 });
                 try {
-                  doc.addImage(statusImg, 'PNG', data.cell.x + 1.5, data.cell.y + (data.cell.height - 7) / 2, data.cell.width - 3, 7);
+                  const badgeW = Math.min(data.cell.width - 2, 18);
+                  const badgeH = 7;
+                  const offsetX = data.cell.x + (data.cell.width - badgeW) / 2;
+                  const offsetY = data.cell.y + (data.cell.height - badgeH) / 2;
+                  doc.addImage(statusImg, 'PNG', offsetX, offsetY, badgeW, badgeH);
                 } catch(e) {}
               }
 
@@ -2624,14 +2628,18 @@
               if (data.column.index === 6) {
                 const vVal = item.vehicle || 'คนปีนตัด';
                 const vehicleImg = createTextCanvasImage(vVal, {
-                  width: 150,
+                  width: 170,
                   height: 45,
                   bgColor: '#f8fafc',
                   color: '#334155',
-                  font: 'bold 18px Prompt, sans-serif'
+                  font: 'bold 16px Prompt, sans-serif'
                 });
                 try {
-                  doc.addImage(vehicleImg, 'PNG', data.cell.x + 1.5, data.cell.y + (data.cell.height - 7) / 2, data.cell.width - 3, 7);
+                  const badgeW = Math.min(data.cell.width - 2, 20);
+                  const badgeH = 7;
+                  const offsetX = data.cell.x + (data.cell.width - badgeW) / 2;
+                  const offsetY = data.cell.y + (data.cell.height - badgeH) / 2;
+                  doc.addImage(vehicleImg, 'PNG', offsetX, offsetY, badgeW, badgeH);
                 } catch(e) {}
               }
             }
